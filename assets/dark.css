@@ -1,0 +1,453 @@
+:root {
+  --indigo-50:  #1A1930;
+  --indigo-100: #2D2B50;
+  --indigo-200: #3D3A6A;
+  --indigo-400: #8B83F0;
+  --indigo-600: #7B72E9;
+  --indigo-800: #C4BFFF;
+  --surface:    #0D0D14;
+  --white:      #111119;
+  --border:     #1E1E2E;
+  --border-mid: #2D2B50;
+  --text-main:  #E8E8FF;
+  --text-muted: #B0B0CC;
+  --text-hint:  #8080A8;
+  --card-bg:    #161620;
+  --card-hover: #1C1C2A;
+  --success-bg: #162816;
+  --success-tx: #7DCF7D;
+  --warning-bg: #2A1F0E;
+  --warning-tx: #D4A843;
+  --danger-bg:  #2A1212;
+  --danger-tx:  #E87878;
+  --info-bg:    #0E1E2E;
+  --info-tx:    #5AABEE;
+}
+
+/* ── Page background ── */
+html, body, [class*="css"], .stApp {
+    background-color: #0D0D14 !important;
+    color: #E8E8FF !important;
+}
+.stApp { background: #0D0D14 !important; }
+.main  { background: #0D0D14 !important; }
+.block-container { background: #0D0D14 !important; }
+
+/* ── All text defaults ── */
+p, span, div, label, li { color: #C8C8E8 !important; }
+h1, h2, h3, h4          { color: #E8E8FF !important; }
+strong                   { color: #E8E8FF !important; }
+small                    { color: #A0A0C0 !important; }
+div[data-testid="stCaptionContainer"] p { color: #A0A0C0 !important; }
+.stMarkdown p  { color: #C8C8E8 !important; }
+.stMarkdown li { color: #C8C8E8 !important; }
+
+/* ── Sidebar ── */
+section[data-testid="stSidebar"] {
+    background: #111119 !important;
+    border-right: 1px solid #1E1E2E !important;
+}
+section[data-testid="stSidebar"] .block-container {
+    background: #111119 !important;
+}
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] div,
+section[data-testid="stSidebar"] label {
+    color: #C8C8E8 !important;
+    background: transparent !important;
+}
+section[data-testid="stSidebar"] hr {
+    border-color: #1E1E2E !important;
+}
+
+/* Sidebar nav buttons */
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+    background: transparent !important;
+    color: #C8C8E8 !important;
+    border: none !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding: 9px 10px 9px 2px !important;
+    width: 100% !important;
+    letter-spacing: 0 !important;
+    box-shadow: none !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
+    background: #1A1930 !important;
+    color: #E8E8FF !important;
+}
+
+/* ── Main content buttons ── */
+.block-container div[data-testid="stButton"] > button {
+    background: #534AB7 !important;
+    color: #E8E8FF !important;
+    border: none !important;
+    border-radius: 8px !important;
+}
+.block-container div[data-testid="stButton"] > button:hover {
+    background: #6B62D4 !important;
+}
+div[data-testid="stFormSubmitButton"] > button {
+    background: #534AB7 !important;
+    color: #E8E8FF !important;
+    border: none !important;
+    border-radius: 8px !important;
+}
+div[data-testid="stFormSubmitButton"] > button:hover {
+    background: #6B62D4 !important;
+}
+
+/* ── Text inputs ── */
+div[data-testid="stTextInput"] input,
+div[data-testid="stNumberInput"] input {
+    background: #161620 !important;
+    border: 1px solid #2D2B50 !important;
+    color: #E8E8FF !important;
+    border-radius: 8px !important;
+}
+div[data-testid="stTextInput"] input::placeholder,
+div[data-testid="stNumberInput"] input::placeholder {
+    color: #5A5A7A !important;
+}
+div[data-testid="stTextInput"] input:focus,
+div[data-testid="stNumberInput"] input:focus {
+    border-color: #8B83F0 !important;
+    box-shadow: 0 0 0 3px #1A1930 !important;
+}
+div[data-testid="stTextInput"] label,
+div[data-testid="stSelectbox"] label,
+div[data-testid="stFileUploader"] label,
+div[data-testid="stNumberInput"] label {
+    color: #D0D0EE !important;
+    font-weight: 500 !important;
+}
+
+/* BaseWeb input internals */
+[data-baseweb="base-input"] {
+    background: #161620 !important;
+    border-color: #2D2B50 !important;
+}
+[data-baseweb="base-input"] input {
+    background: #161620 !important;
+    color: #E8E8FF !important;
+    caret-color: #8B83F0 !important;
+}
+[data-baseweb="input"] {
+    background: #161620 !important;
+    border-color: #2D2B50 !important;
+}
+[data-baseweb="form-control-label"] {
+    color: #D0D0EE !important;
+}
+
+/* ── Selectbox ── */
+div[data-baseweb="select"] > div {
+    background: #161620 !important;
+    border: 1px solid #2D2B50 !important;
+    color: #E8E8FF !important;
+    border-radius: 8px !important;
+}
+div[data-baseweb="select"] span {
+    color: #E8E8FF !important;
+}
+div[data-baseweb="popover"] {
+    background: #161620 !important;
+    border: 1px solid #2D2B50 !important;
+}
+ul[data-baseweb="menu"] {
+    background: #161620 !important;
+}
+li[role="option"] {
+    background: #161620 !important;
+    color: #C8C8E8 !important;
+}
+li[role="option"]:hover {
+    background: #1A1930 !important;
+}
+
+/* ── File uploader ── */
+div[data-testid="stFileUploader"] {
+    background: #161620 !important;
+    border-radius: 8px !important;
+}
+div[data-testid="stFileUploader"] > div {
+    background: #161620 !important;
+}
+div[data-testid="stFileUploadDropzone"] {
+    background: #161620 !important;
+    border: 1px solid #2D2B50 !important;
+    border-radius: 8px !important;
+}
+div[data-testid="stFileUploadDropzone"] > div {
+    background: #161620 !important;
+}
+div[data-testid="stFileUploadDropzone"] span,
+div[data-testid="stFileUploadDropzone"] p,
+div[data-testid="stFileUploadDropzone"] small {
+    color: #A0A0C0 !important;
+    background: transparent !important;
+}
+/* The white Upload button */
+div[data-testid="stFileUploadDropzone"] button,
+div[data-testid="stFileUploader"] button {
+    background: #1A1930 !important;
+    color: #C4BFFF !important;
+    border: 1px solid #2D2B50 !important;
+    border-radius: 6px !important;
+}
+div[data-testid="stFileUploadDropzone"] button:hover,
+div[data-testid="stFileUploader"] button:hover {
+    background: #2D2B50 !important;
+}
+div[data-testid="stFileUploadDropzone"] button span,
+div[data-testid="stFileUploader"] button span {
+    color: #C4BFFF !important;
+    background: transparent !important;
+}
+div[data-testid="stFileUploadDropzone"] button svg,
+div[data-testid="stFileUploader"] button svg {
+    fill: #C4BFFF !important;
+    stroke: #C4BFFF !important;
+}
+[data-baseweb="file-uploader"] {
+    background: #161620 !important;
+    border-color: #2D2B50 !important;
+}
+[data-baseweb="file-uploader"] * {
+    background: #161620 !important;
+    color: #C8C8E8 !important;
+}
+
+/* ── Form container ── */
+div[data-testid="stForm"] {
+    background: #161620 !important;
+    border: 1px solid #1E1E2E !important;
+    border-radius: 10px !important;
+}
+div[data-testid="stForm"] > div {
+    background: #161620 !important;
+}
+
+/* ── Expander / Status ── */
+div[data-testid="stExpander"] {
+    background: #161620 !important;
+    border: 1px solid #1E1E2E !important;
+    border-radius: 10px !important;
+}
+div[data-testid="stExpander"] summary,
+div[data-testid="stExpander"] summary span {
+    color: #C8C8E8 !important;
+    background: #161620 !important;
+}
+div[data-testid="stExpander"] > div {
+    background: #161620 !important;
+}
+
+/* ── Alerts ── */
+div[data-testid="stAlert"] {
+    background: #161620 !important;
+    border-radius: 8px !important;
+}
+div[data-testid="stAlert"] p,
+div[data-testid="stAlert"] span {
+    color: #C8C8E8 !important;
+}
+
+/* ── Custom HTML classes ── */
+.stat-card {
+    background: #161620 !important;
+    border: 1px solid #1E1E2E !important;
+}
+.stat-label  { color: #9090B0 !important; }
+.stat-sub    { color: #8080A8 !important; }
+.stat-val    { color: #E8E8FF !important; }
+.stat-val.accent  { color: #8B83F0 !important; }
+.stat-val.success { color: #7DCF7D !important; }
+
+.badge-indigo {
+    background: #1A1930 !important;
+    color: #C4BFFF !important;
+    border: 1px solid #2D2B50 !important;
+}
+.badge-success { background: #162816 !important; color: #7DCF7D !important; }
+.badge-warning { background: #2A1F0E !important; color: #D4A843 !important; }
+.badge-danger  { background: #2A1212 !important; color: #E87878 !important; }
+.badge-info    { background: #0E1E2E !important; color: #5AABEE !important; }
+
+.section-title {
+    color: #7070A0 !important;
+    border-bottom: 1px solid #1E1E2E !important;
+}
+
+.activity-item, .doc-row {
+    background: #161620 !important;
+    border: 1px solid #1E1E2E !important;
+}
+.doc-row:hover {
+    background: #1C1C2A !important;
+    border-color: #534AB7 !important;
+}
+.activity-name, .doc-name { color: #E8E8FF !important; }
+.activity-time, .doc-meta { color: #8080A8 !important; }
+.activity-action           { color: #A0A0C0 !important; }
+.doc-icon { background: #1A1930 !important; }
+
+.upload-zone {
+    background: #161620 !important;
+    border: 1.5px dashed #2D2B50 !important;
+}
+.upload-zone-text { color: #E8E8FF !important; }
+.upload-zone-sub  { color: #A0A0C0 !important; }
+
+.pin-prompt {
+    background: #161620 !important;
+    border: 1px solid #1E1E2E !important;
+}
+.pin-title { color: #E8E8FF !important; }
+.pin-sub   { color: #A0A0C0 !important; }
+
+.sec-card {
+    background: #161620 !important;
+    border: 1px solid #1E1E2E !important;
+}
+.sec-card:hover  { border-color: #534AB7 !important; }
+.sec-card-title  { color: #E8E8FF !important; }
+.sec-card-desc   { color: #A0A0C0 !important; }
+
+.topbar          { border-bottom: 1px solid #1E1E2E !important; }
+.topbar-title    { color: #E8E8FF !important; }
+.topbar-search   {
+    background: #161620 !important;
+    border: 1px solid #1E1E2E !important;
+    color: #6060A0 !important;
+}
+.avatar-sm {
+    background: #1A1930 !important;
+    border: 1.5px solid #534AB7 !important;
+    color: #C4BFFF !important;
+}
+
+.prog-wrap { background: #1E1E2E !important; }
+.prog-bar  { background: #534AB7 !important; }
+
+.hash-box {
+    background: #0D0D14 !important;
+    border: 1px solid #1E1E2E !important;
+    color: #8080A8 !important;
+}
+
+/* ── Inline style overrides ── */
+/* Backgrounds */
+[style*="background:#EEEDFE"]          { background: #1A1930 !important; }
+[style*="background:#F5F4FE"]          { background: #161620 !important; }
+[style*="background:#FFFFFF"]          { background: #161620 !important; }
+[style*="background:#ffffff"]          { background: #161620 !important; }
+[style*="background:#fff"]             { background: #161620 !important; }
+[style*="background: #fff"]            { background: #161620 !important; }
+[style*="background:white"]            { background: #161620 !important; }
+[style*="background: white"]           { background: #161620 !important; }
+[style*="background:#EAF3DE"]          { background: #162816 !important; }
+[style*="background:#E6F1FB"]          { background: #0E1E2E !important; }
+[style*="background:#FAEEDA"]          { background: #2A1F0E !important; }
+[style*="background:#FCEBEB"]          { background: #2A1212 !important; }
+[style*="background:var(--white)"]     { background: #111119 !important; }
+[style*="background:var(--surface)"]   { background: #0D0D14 !important; }
+[style*="background:var(--card-bg)"]   { background: #161620 !important; }
+[style*="background:var(--indigo-50)"] { background: #1A1930 !important; }
+
+/* Text colors */
+[style*="color:#1E1B4B"]             { color: #E8E8FF !important; }
+[style*="color:#26215C"]             { color: #E8E8FF !important; }
+[style*="color:#3C3489"]             { color: #C4BFFF !important; }
+[style*="color:#534AB7"]             { color: #8B83F0 !important; }
+[style*="color:#6B67A8"]             { color: #A0A0C0 !important; }
+[style*="color:#AFA9EC"]             { color: #7A7A9A !important; }
+[style*="color:#085041"]             { color: #C4BFFF !important; }
+[style*="color:#0F6E56"]             { color: #C4BFFF !important; }
+[style*="color:#3B6D11"]             { color: #7DCF7D !important; }
+[style*="color:#639922"]             { color: #7DCF7D !important; }
+[style*="color:#4A7A1E"]             { color: #7DCF7D !important; }
+[style*="color:#854F0B"]             { color: #D4A843 !important; }
+[style*="color:#A32D2D"]             { color: #E87878 !important; }
+[style*="color:#185FA5"]             { color: #5AABEE !important; }
+[style*="color:var(--text-main)"]    { color: #E8E8FF !important; }
+[style*="color:var(--text-muted)"]   { color: #A0A0C0 !important; }
+[style*="color:var(--text-hint)"]    { color: #7A7A9A !important; }
+[style*="color:var(--indigo-800)"]   { color: #C4BFFF !important; }
+[style*="color:var(--indigo-600)"]   { color: #8B83F0 !important; }
+[style*="color:var(--success-tx)"]   { color: #7DCF7D !important; }
+[style*="color:var(--danger-tx)"]    { color: #E87878 !important; }
+[style*="color:var(--warning-tx)"]   { color: #D4A843 !important; }
+
+/* Borders */
+[style*="border:1px solid #E2E0F8"]            { border-color: #1E1E2E !important; }
+[style*="border:1px solid #CECBF6"]            { border-color: #2D2B50 !important; }
+[style*="border:1px solid #C0DD97"]            { border-color: #2A3A1A !important; }
+[style*="border:1px solid var(--border)"]      { border-color: #1E1E2E !important; }
+[style*="border:1px solid var(--border-mid)"]  { border-color: #2D2B50 !important; }
+[style*="border-left:3px solid #534AB7"]       { border-color: #8B83F0 !important; }
+[style*="border:1px solid var(--danger-tx)"]   { border-color: #E87878 !important; }
+[style*="border-bottom:1px solid var(--border)"] { border-color: #1E1E2E !important; }
+
+/* Compact file uploader — no big white box */
+div[data-testid="stFileUploader"] {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+div[data-testid="stFileUploadDropzone"] {
+    background: #161620 !important;
+    border: 1px solid #2D2B50 !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    min-height: unset !important;
+}
+div[data-testid="stFileUploadDropzone"] > div {
+    background: transparent !important;
+    gap: 8px !important;
+}
+div[data-testid="stFileUploadDropzone"] button {
+    background: #1A1930 !important;
+    color: #C4BFFF !important;
+    border: 1px solid #2D2B50 !important;
+    border-radius: 6px !important;
+    padding: 4px 14px !important;
+    font-size: 13px !important;
+    min-height: unset !important;
+    height: 32px !important;
+}
+div[data-testid="stFileUploadDropzone"] button span {
+    color: #C4BFFF !important;
+    background: transparent !important;
+}
+div[data-testid="stFileUploadDropzone"] button svg {
+    fill: #C4BFFF !important;
+    width: 14px !important;
+    height: 14px !important;
+}
+div[data-testid="stFileUploadDropzone"] span,
+div[data-testid="stFileUploadDropzone"] p,
+div[data-testid="stFileUploadDropzone"] small {
+    color: #7070A0 !important;
+    background: transparent !important;
+    font-size: 13px !important;
+}
+
+/* Make Browse label button small and styled */
+div[data-testid="stFileUploader"] > label {
+    background: #1A1930 !important;
+    color: #C4BFFF !important;
+    border: 1px solid #2D2B50 !important;
+    border-radius: 8px !important;
+    padding: 8px 20px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    display: inline-block !important;
+    width: auto !important;
+}
+div[data-testid="stFileUploader"] > div {
+    display: none !important;
+}

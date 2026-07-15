@@ -1,0 +1,219 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+:root {
+  --indigo-50:  #EEEDFE;
+  --indigo-100: #CECBF6;
+  --indigo-200: #AFA9EC;
+  --indigo-400: #7F77DD;
+  --indigo-600: #534AB7;
+  --indigo-800: #3C3489;
+  --surface:    #F5F4FE;
+  --white:      #FFFFFF;
+  --border:     #E2E0F8;
+  --text-main:  #1E1B4B;
+  --text-muted: #6B67A8;
+  --text-hint:  #AFA9EC;
+  --card-bg:    #FFFFFF;
+  --card-hover: #F5F4FE;
+  --success-bg: #EAF3DE;
+  --success-tx: #3B6D11;
+  --warning-bg: #FAEEDA;
+  --warning-tx: #854F0B;
+  --danger-bg:  #FCEBEB;
+  --danger-tx:  #A32D2D;
+  --info-bg:    #E6F1FB;
+  --info-tx:    #185FA5;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+html, body, [class*="css"] {
+  font-family: var(--font) !important;
+  background-color: var(--surface) !important;
+  color: var(--text-main) !important;
+}
+#MainMenu, footer, header { visibility: hidden; }
+div[data-testid="stToolbar"] { display: none; }
+.block-container { padding: 2rem 2.5rem !important; max-width: 1100px !important; }
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+  background: var(--white) !important;
+  border-right: 1px solid var(--border) !important;
+  min-width: 220px !important; max-width: 220px !important;
+}
+section[data-testid="stSidebar"] .block-container { padding: 0 1rem 1.5rem 1rem !important; }
+
+/* Sidebar nav buttons — equal size, no fill */
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  text-align: left !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  padding: 10px 14px !important;
+  margin-bottom: 2px !important;
+  width: 100% !important;
+  justify-content: flex-start !important;
+  font-family: var(--font) !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
+  background: var(--indigo-50) !important;
+  color: var(--indigo-800) !important;
+}
+
+/* Main area buttons */
+.block-container div[data-testid="stButton"] > button {
+  background: var(--indigo-600) !important;
+  color: #EEEDFE !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  padding: 0.55rem 1.4rem !important;
+  transition: background 0.15s !important;
+  font-family: var(--font) !important;
+}
+.block-container div[data-testid="stButton"] > button:hover {
+  background: var(--indigo-800) !important;
+}
+
+/* Inputs */
+div[data-testid="stTextInput"] input {
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  font-family: var(--font) !important;
+  font-size: 15px !important;
+  color: var(--text-main) !important;
+  background: var(--white) !important;
+  padding: 10px 12px !important;
+}
+div[data-testid="stTextInput"] input:focus {
+  border-color: var(--indigo-400) !important;
+  box-shadow: 0 0 0 3px var(--indigo-50) !important;
+}
+div[data-testid="stTextInput"] label,
+div[data-testid="stSelectbox"] label,
+div[data-testid="stFileUploader"] label {
+  font-size: 14px !important; font-weight: 500 !important;
+  color: var(--text-main) !important;
+}
+
+/* Cards */
+.stat-card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1.2rem 1.4rem;
+}
+.stat-val { font-size: 30px; font-weight: 700; font-family: var(--mono); line-height: 1.1; margin: 6px 0 4px; color: var(--text-main); }
+.stat-val.accent  { color: var(--indigo-600); }
+.stat-val.success { color: var(--success-tx); }
+.stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+.stat-sub   { font-size: 13px; color: var(--text-hint); }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 20px; }
+.badge-indigo  { background: var(--indigo-50);  color: var(--indigo-800); }
+.badge-success { background: var(--success-bg); color: var(--success-tx); }
+.badge-warning { background: var(--warning-bg); color: var(--warning-tx); }
+.badge-danger  { background: var(--danger-bg);  color: var(--danger-tx); }
+.badge-info    { background: var(--info-bg);    color: var(--info-tx); }
+
+.section-title {
+  font-size: 13px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .08em; margin: 1.5rem 0 .75rem;
+}
+
+.activity-item, .doc-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px; background: var(--card-bg);
+  border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px;
+}
+.doc-row { transition: border-color .15s; cursor: pointer; }
+.doc-row:hover { border-color: var(--indigo-400); }
+.activity-icon, .doc-icon {
+  width: 36px; height: 36px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0;
+}
+.doc-icon { background: var(--indigo-50); }
+.activity-name, .doc-name { font-size: 14px; font-weight: 600; color: var(--text-main); }
+.activity-time, .doc-meta { font-size: 12px; color: var(--text-hint); margin-top: 2px; }
+.activity-action { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+.upload-zone {
+  border: 2px dashed var(--indigo-400); border-radius: 14px;
+  background: var(--indigo-50); padding: 3rem 2rem;
+  text-align: center; margin-bottom: 1.5rem;
+}
+.upload-zone-icon { font-size: 40px; margin-bottom: .75rem; }
+.upload-zone-text { font-size: 16px; font-weight: 600; color: var(--indigo-800); }
+.upload-zone-sub  { font-size: 13px; color: var(--indigo-600); margin-top: 6px; }
+
+.pin-prompt {
+  display: flex; align-items: flex-start; gap: 14px;
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.1rem 1.3rem; margin-bottom: 1.2rem;
+}
+.pin-title { font-size: 15px; font-weight: 600; color: var(--text-main); }
+.pin-sub   { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+
+.sec-card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.2rem 1.4rem;
+  margin-bottom: 10px; display: flex; align-items: flex-start; gap: 14px;
+}
+.sec-card-icon  { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+.sec-card-title { font-size: 15px; font-weight: 600; color: var(--text-main); }
+.sec-card-desc  { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.6; }
+
+.prog-wrap { height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; margin: .75rem 0; }
+.prog-bar  { height: 100%; background: var(--indigo-600); border-radius: 4px; }
+
+.hash-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 14px;
+  font-family: var(--mono); font-size: 12px;
+  color: var(--text-muted); word-break: break-all; line-height: 1.7;
+}
+
+.topbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+.topbar-title { font-size: 22px; font-weight: 700; color: var(--text-main); flex: 1; }
+.topbar-search {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 14px; font-size: 14px; color: var(--text-muted);
+  background: var(--card-bg); width: 220px;
+}
+.avatar-sm {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--indigo-50); border: 2px solid var(--indigo-400);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--indigo-800);
+}/* Sidebar hover — indigo, not brown */
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
+  background: var(--indigo-50) !important;
+  color: var(--indigo-600) !important;
+}
+
+/* Sidebar buttons start from left margin */
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+  padding-left: 4px !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  letter-spacing: 0 !important;
+}
+/* Make Browse label button small and styled */
+div[data-testid="stFileUploader"] > label {
+    background: #1A1930 !important;
+    color: #C4BFFF !important;
+    border: 1px solid #2D2B50 !important;
+    border-radius: 8px !important;
+    padding: 8px 20px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    display: inline-block !important;
+    width: auto !important;
+}
+div[data-testid="stFileUploader"] > div {
+    display: none !important;
+}
