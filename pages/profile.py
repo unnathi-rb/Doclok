@@ -1,26 +1,30 @@
 import streamlit as st
 
 def render_profile():
+    user_name  = st.session_state.get("user_name", "User")
+    user_email = st.session_state.get("user_email", "")
+    initials   = "".join([p[0].upper() for p in user_name.split()[:2]]) or "U"
+
     st.markdown('<div style="margin-left:0px">', unsafe_allow_html=True)
 
-    st.markdown("""
+    st.markdown(f"""
         <div class="topbar">
           <div class="topbar-title">Profile</div>
-          <div class="avatar-sm">UN</div>
+          <div class="avatar-sm">{initials}</div>
         </div>
     """, unsafe_allow_html=True)
 
     # Profile card — uses CSS variables not hardcoded colors
-    st.markdown("""
+    st.markdown(f"""
         <div class="stat-card" style="margin-bottom:1.25rem;display:flex;align-items:center;gap:1.5rem;">
           <div style="width:64px;height:64px;border-radius:50%;
                       background:var(--indigo-50);
                       display:flex;align-items:center;justify-content:center;
                       font-size:22px;font-weight:700;color:var(--indigo-800);
-                      flex-shrink:0;border:2px solid var(--border);">RS</div>
+                      flex-shrink:0;border:2px solid var(--border);">{initials}</div>
           <div>
-            <div style="font-size:18px;font-weight:700;color:var(--text-main);">unnathi</div>
-            <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">unnathi@example.com</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text-main);">{user_name}</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">{user_email}</div>
             <span class="badge badge-indigo" style="margin-top:8px;display:inline-flex;">Personal vault</span>
           </div>
         </div>
@@ -31,12 +35,12 @@ def render_profile():
     with st.form("profile_form"):
         col1, col2 = st.columns(2)
         with col1:
-            st.text_input("Full name", value="Unnathi")
+            st.text_input("Full name", value=user_name)
         with col2:
-            st.text_input("Email", value="unnathi@example.com")
+            st.text_input("Email", value=user_email, disabled=True)
         col3, col4 = st.columns(2)
         with col3:
-            st.text_input("Mobile number", value="+91 11111 00000")
+            st.text_input("Mobile number", value="")
         with col4:
             st.selectbox("Account type", ["Personal", "Student", "Professional"])
 

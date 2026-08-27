@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
+import certifi
 from datetime import datetime
 from pymongo import DESCENDING
 from utils.hash_utils import hash_password
@@ -8,7 +9,7 @@ from utils.hash_utils import hash_password
 
 load_dotenv()
 
-client = MongoClient(os.getenv("MONGODB_URI"))
+client = MongoClient(os.getenv("MONGODB_URI"), tlsCAFile=certifi.where())
 
 db = client["doclok"]
 
@@ -17,28 +18,30 @@ documents_collection = db["documents"]
 users_collection = db["users"]
 def save_document_metadata(
     user_id,
-    filename,
+    encrypted_name,
     encrypted_filename,
     s3_key,
     file_hash,
     salt,
     size,
+    has_sensitive_data=False,
 ):
     document = {
         "user_id": user_id,
-        "filename": filename,
+        "encrypted_name": encrypted_name,
         "encrypted_filename": encrypted_filename,
         "s3_key": s3_key,
         "hash": file_hash,
         "salt": salt.hex(),
         "size": size,
         "status": "Verified",
+        "has_sensitive_data": has_sensitive_data,
         "uploaded_at": datetime.utcnow(),
     }
 
     result = documents_collection.insert_one(document)
 
-    print("✅ Metadata saved!")
+    print("Metadata saved!")
     print("Inserted ID:", result.inserted_id)
     
 
@@ -94,7 +97,10 @@ def register_user(
     name,
     email,
     password,
-    pin
+    pin,
+    phone=None,
+    recovery_password_enc=None,
+    recovery_salt=None,
 ):
 
     existing_user = users_collection.find_one(
@@ -110,13 +116,28 @@ def register_user(
 
         "email": email,
 
+        "phone": phone,
+
         "password": hash_password(password),
 
-        "pin": hash_password(pin)
+        "pin": hash_password(pin),
+
+        "recovery_password_enc": recovery_password_enc,
+
+        "recovery_salt": recovery_salt,
 
     })
 
     return True
+
+def get_recovery_data(email):
+    user = users_collection.find_one({"email": email})
+    if not user or not user.get("recovery_password_enc"):
+        return None
+    return {
+        "recovery_password_enc": user["recovery_password_enc"],
+        "recovery_salt": user["recovery_salt"],
+    }
 def login_user(
     email,
     password
@@ -142,3 +163,29 @@ def verify_pin(
         return False
 
     return user["pin"] == hash_password(pin)
+
+def update_pin(
+    email,
+    new_pin
+):
+
+    users_collection.update_one(
+        {"email": email},
+        {"$set": {"pin": hash_password(new_pin)}}
+    )
+
+    return True
+
+def verify_password(
+    email,
+    password
+):
+
+    user = users_collection.find_one(
+        {"email": email}
+    )
+
+    if not user:
+        return False
+
+    return user["password"] == hash_password(password)

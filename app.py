@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 from components.sidebar import render_sidebar
 from pages.login import render_login
 from pages.home import render_home
@@ -19,7 +20,9 @@ defaults = {
     "auth_step": "password",
     "auth_mode": "login",
     "current_page": "Home",
+    "user": None,
     "user_email": "",
+    "user_name": "",
     "dark_mode": False,
     "selected_doc": None,
     "doc_pin_ok": False,
@@ -52,6 +55,17 @@ if st.session_state.dark_mode:
 if not st.session_state.authenticated:
     render_login()
 else:
+    SESSION_TIMEOUT_SECONDS = 60
+    last_activity = st.session_state.get("last_activity", time.time())
+
+    if time.time() - last_activity > SESSION_TIMEOUT_SECONDS:
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.session_state["session_expired"] = True
+        st.rerun()
+
+    st.session_state.last_activity = time.time()
+
     render_sidebar()
     page = st.session_state.current_page
     if page == "Home":           render_home()

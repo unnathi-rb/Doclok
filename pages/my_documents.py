@@ -2,6 +2,7 @@ import streamlit as st
 
 import os
 from utils.encryption import decrypt_file
+from utils.hash_utils import verify_sha256
 from utils.mongodb import get_all_documents
 from utils.s3_utils import (
     download_from_s3,
@@ -11,44 +12,41 @@ from utils.s3_utils import (
 from utils.mongodb import (
     get_all_documents,
     delete_document,
+    verify_pin,
+    verify_password,
 )
+from utils.security_utils import is_locked_out, register_failed_attempt, reset_attempts
 
 
 def render_my_documents():
     if "selected_doc"       not in st.session_state: st.session_state.selected_doc       = None
     if "doc_pin_ok"         not in st.session_state: st.session_state.doc_pin_ok         = False
     if "doc_password_ok"    not in st.session_state: st.session_state.doc_password_ok    = False
+    if "doc_password_val"   not in st.session_state: st.session_state.doc_password_val   = ""
 
-    st.markdown("""
+    user_email = st.session_state.user_email
+    user_name  = st.session_state.get("user_name", "User")
+    initials   = "".join([p[0].upper() for p in user_name.split()[:2]]) or "U"
+
+    st.markdown(f"""
     <div class="topbar">
         <div class="topbar-title">My Documents</div>
-        <div class="avatar-sm">UN</div>
+        <div class="avatar-sm">{initials}</div>
     </div>
     """, unsafe_allow_html=True)
-
-    search = st.text_input(
-        "",
-        placeholder="Search documents..."
-    )
 
     st.markdown("""
         <div style="background:var(--indigo-50);border:1px solid var(--border);
                     border-radius:10px;padding:10px 16px;margin-bottom:1.5rem;
                     font-size:13px;color:var(--indigo-800);">
           Viewing or downloading a file requires your PIN and your password.
-          Your password is used to decrypt the file — it is never stored anywhere.
+          Your password is used to decrypt the file (and its filename) — it is never stored anywhere.
+          Because filenames are encrypted, they aren't visible until you unlock a document.
         </div>
     """, unsafe_allow_html=True)
 
-    filter_col, _ = st.columns([2, 3])
-    with filter_col:
-        category_filter = st.selectbox(
-            "Filter by category",
-            ["All categories", "Identity", "Academic", "Financial", "Medical"]
-        )
 
-
-    documents = get_all_documents("demo_user")
+    documents = get_all_documents(user_email)
 
     docs = []
 
@@ -58,7 +56,7 @@ def render_my_documents():
 
             "id": document["s3_key"],
 
-            "name": document["filename"],
+            "encrypted_name": document["encrypted_name"],
 
             "category": "Document",
 
@@ -68,27 +66,27 @@ def render_my_documents():
 
             "date": document["uploaded_at"].strftime("%d %b %Y"),
 
-            "hash": document["hash"]
+            "hash": document["hash"],
+
+            "has_sensitive_data": document.get("has_sensitive_data", False)
 
         })
-    if search:
 
-        docs = [
-            doc
-            for doc in docs
-            if search.lower() in doc["name"].lower()
-        ]
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-
     for doc in docs:
         col_main, col_view, col_dl, col_del = st.columns([5, 1, 1, 1])
 
         with col_main:
+            sensitive_badge = (
+                '&nbsp;<span class="badge" style="font-size:11px;background:#FDECEC;color:#B3261E">⚠ Sensitive info</span>'
+                if doc.get("has_sensitive_data") else ""
+            )
+            display_name = st.session_state.get(f"decrypted_name_{doc['id']}", "🔒 Encrypted document")
             st.markdown(f"""
                 <div class="doc-row">
                   <div style="flex:1;">
-                    <div class="doc-name">{doc['name']}
-                      &nbsp;<span class="badge badge-indigo" style="font-size:11px">{doc["status"]}</span>
+                    <div class="doc-name">{display_name}
+                      &nbsp;<span class="badge badge-indigo" style="font-size:11px">{doc["status"]}</span>{sensitive_badge}
                     </div>
                     <div class="doc-meta">
                       {doc['category']} &nbsp;·&nbsp; {doc['size']} &nbsp;·&nbsp; {doc['date']}
@@ -118,21 +116,14 @@ def render_my_documents():
                 key=f"dl_{doc['id']}"
             ):
 
-                encrypted_data = download_from_s3(
-                    doc["id"]
-                )
+                # Downloading needs the same PIN + password decryption gate as View
+                st.session_state.selected_doc = doc["id"]
 
-                decrypted_data = decrypt_file(
-                    encrypted_data,
-                    "password123"
-                )
+                st.session_state.doc_pin_ok = False
 
-                st.download_button(
-                    label="Click to Download",
-                    data=decrypted_data,
-                    file_name=doc["name"],
-                    key=f"download_{doc['id']}"
-                )
+                st.session_state.doc_password_ok = False
+
+                st.rerun()
         with col_del:
 
             if st.button(
@@ -186,11 +177,16 @@ def render_my_documents():
                     )
                 with p2:
                     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("Confirm PIN", key=f"pin_btn_{doc['id']}"):
-                        if pin_val == "2648":
+                    locked, remaining = is_locked_out(f"doc_pin_{doc['id']}")
+                    if locked:
+                        st.error(f"Too many attempts. Try again in {remaining}s.")
+                    elif st.button("Confirm PIN", key=f"pin_btn_{doc['id']}"):
+                        if verify_pin(user_email, pin_val):
+                            reset_attempts(f"doc_pin_{doc['id']}")
                             st.session_state.doc_pin_ok = True
                             st.rerun()
                         else:
+                            register_failed_attempt(f"doc_pin_{doc['id']}")
                             st.error("Incorrect PIN.")
 
             # ── STEP 2: Password (decryption key) ─────────────────────────
@@ -204,7 +200,7 @@ def render_my_documents():
                       </div>
                       <div style="font-size:13px;color:var(--text-muted);">
                         Your encryption key is derived from your password using PBKDF2.
-                        It is used right now to decrypt this file and is never stored.
+                        It is used right now to decrypt this file (and its filename) and is never stored.
                       </div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -218,9 +214,15 @@ def render_my_documents():
                 with p2:
                     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
                     if st.button("Decrypt and View", key=f"pass_btn_{doc['id']}"):
-                        if pass_val == "password123":
-                            st.session_state.doc_password_ok = True
-                            st.rerun()
+                        if verify_password(user_email, pass_val):
+                            try:
+                                decrypted_name = decrypt_file(doc["encrypted_name"], pass_val).decode()
+                                st.session_state[f"decrypted_name_{doc['id']}"] = decrypted_name
+                                st.session_state.doc_password_ok = True
+                                st.session_state.doc_password_val = pass_val
+                                st.rerun()
+                            except Exception:
+                                st.error("Could not decrypt this document's filename with that password.")
                         else:
                             st.error("Incorrect password. Cannot decrypt file.")
 
@@ -233,65 +235,93 @@ def render_my_documents():
                     doc["id"]
                 )
 
-                # Decrypt it
-                decrypted_data = decrypt_file(
-                    encrypted_data,
-                    "password123"
-                )
-                
-                if file_extension in [ 
-                  "jpg",
-                  "jpeg",
-                  "png"
-              ]:
+                # ── Tamper detection: recompute hash and compare to what was stored at upload ──
+                is_intact = verify_sha256(encrypted_data, doc["hash"])
 
-                  st.image(
-                      decrypted_data,
-                      use_container_width=True
-                  )
-
-                elif file_extension == "pdf":
-
-                  import base64
-
-                  pdf_base64 = base64.b64encode(
-                      decrypted_data
-                  ).decode()
-
-                  st.markdown(
-                      f"""
-                      <iframe
-                      src="data:application/pdf;base64,{pdf_base64}"
-                      width="100%"
-                      height="700">
-                      </iframe>
-                      """,
-                      unsafe_allow_html=True
-                  )
-
-                elif file_extension == "txt":
-
-                  st.text(
-                      decrypted_data.decode(
-                          errors="ignore"
-                      )
-                  )
+                if not is_intact:
+                    st.error(
+                        "⚠ Tampered — this file's integrity check failed. "
+                        "The stored fingerprint no longer matches the file in cloud storage, "
+                        "so it will not be decrypted."
+                    )
+                    if st.button("Close", key=f"close_tampered_{doc['id']}"):
+                        st.session_state.selected_doc = None
+                        st.session_state.doc_pin_ok = False
+                        st.session_state.doc_password_ok = False
+                        st.session_state.doc_password_val = ""
+                        st.rerun()
 
                 else:
 
-                  st.download_button(
-                      "Download File",
-                      data=decrypted_data,
-                      file_name=doc["name"]
-                  )
+                    # Decrypt it using the password just entered
+                    decrypted_data = decrypt_file(
+                        encrypted_data,
+                        st.session_state.doc_password_val
+                    )
 
-                if st.button(
-                  "Close",
-                  key=f"close_{doc['id']}"
-              ):
+                    real_name = st.session_state.get(f"decrypted_name_{doc['id']}", "document")
 
-                  st.session_state.selected_doc = None
-                  st.session_state.doc_pin_ok = False
-                  st.session_state.doc_password_ok = False
-                  st.rerun()
-                  st.success("File decrypted successfully!")
+                    file_extension = real_name.rsplit(".", 1)[-1].lower() if "." in real_name else ""
+
+                    st.success("✅ Integrity verified — file matches its stored fingerprint.")
+
+                    st.download_button(
+                        "⬇ Download decrypted file",
+                        data=decrypted_data,
+                        file_name=real_name,
+                        key=f"download_{doc['id']}"
+                    )
+
+                    if file_extension in ["jpg", "jpeg", "png"]:
+
+                        st.image(
+                            decrypted_data,
+                            use_container_width=True
+                        )
+
+                    elif file_extension == "pdf":
+
+                        import base64
+
+                        pdf_base64 = base64.b64encode(
+                            decrypted_data
+                        ).decode()
+
+                        st.markdown(
+                            f"""
+                            <iframe
+                            src="data:application/pdf;base64,{pdf_base64}"
+                            width="100%"
+                            height="700">
+                            </iframe>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
+                    elif file_extension == "txt":
+
+                        st.text(
+                            decrypted_data.decode(
+                                errors="ignore"
+                            )
+                        )
+
+                    else:
+
+                        st.download_button(
+                            "Download File",
+                            data=decrypted_data,
+                            file_name=real_name
+                        )
+
+                    if st.button(
+                        "Close",
+                        key=f"close_{doc['id']}"
+                    ):
+
+                        st.session_state.selected_doc = None
+                        st.session_state.doc_pin_ok = False
+                        st.session_state.doc_password_ok = False
+                        st.session_state.doc_password_val = ""
+                        st.session_state.pop(f"decrypted_name_{doc['id']}", None)
+                        st.rerun()

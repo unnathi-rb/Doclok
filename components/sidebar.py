@@ -12,6 +12,9 @@ def render_sidebar():
     current = st.session_state.current_page
     dark    = st.session_state.dark_mode
 
+    user_name = st.session_state.get("user_name", "User")
+    initials  = "".join([p[0].upper() for p in user_name.split()[:2]]) or "U"
+
     with st.sidebar:
         # Logo
         st.markdown("""
@@ -61,14 +64,14 @@ def render_sidebar():
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
         # User info
-        st.markdown("""
+        st.markdown(f"""
             <div style="display:flex;align-items:center;gap:10px;padding:6px 0;">
               <div style="width:34px;height:34px;border-radius:50%;
                           background:var(--indigo-50);
                           display:flex;align-items:center;justify-content:center;
-                          font-size:12px;font-weight:700;color:#3C3489;flex-shrink:0;">RS</div>
+                          font-size:12px;font-weight:700;color:#3C3489;flex-shrink:0;">{initials}</div>
               <div>
-                <div style="font-size:13px;font-weight:600;color:var(--text-main);">Unnathi</div>
+                <div style="font-size:13px;font-weight:600;color:var(--text-main);">{user_name}</div>
                 <div style="font-size:11px;color:var(--text-muted);">Personal vault</div>
               </div>
             </div>
@@ -77,6 +80,6 @@ def render_sidebar():
         st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
         if st.button("Logout", key="nav_logout", use_container_width=True):
-            st.session_state.authenticated = False
-            st.session_state.current_page  = "Home"
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.rerun()

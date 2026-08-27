@@ -1,10 +1,15 @@
 import streamlit as st
 import time
 import os
+import uuid
 from utils.hash_utils import generate_hash
 from utils.encryption import encrypt_file
 from utils.s3_utils import upload_to_s3
-from utils.mongodb import save_document_metadata
+from utils.mongodb import save_document_metadata, verify_pin, verify_password
+from utils.ocr_utils import extract_text_from_image, extract_text_from_pdf
+from utils.masking_utils import detect_sensitive_fields
+from utils.preprocessing_utils import preprocess_image
+from utils.security_utils import is_locked_out, register_failed_attempt, reset_attempts
 PIPELINE_STEPS = [
     "Step 1 — Improving image quality (OpenCV)...",
     "Step 2 — Reading text from document (OCR)...",
@@ -14,18 +19,19 @@ PIPELINE_STEPS = [
     "Step 6 — Saving securely to cloud (AWS S3)...",
 ]
 
-DEMO_PIN      = "2648"
-DEMO_PASSWORD = "password123"
-
 
 def render_upload():
     if "upload_step"     not in st.session_state: st.session_state.upload_step     = "select"
     if "upload_file_obj" not in st.session_state: st.session_state.upload_file_obj = None
 
-    st.markdown("""
+    user_email = st.session_state.user_email
+    user_name  = st.session_state.get("user_name", "User")
+    initials   = "".join([p[0].upper() for p in user_name.split()[:2]]) or "U"
+
+    st.markdown(f"""
         <div class="topbar">
           <div class="topbar-title">Upload document</div>
-          <div class="avatar-sm">UN</div>
+          <div class="avatar-sm">{initials}</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -57,22 +63,12 @@ def render_upload():
    
     if st.session_state.upload_step == "select":
 
-        st.markdown("""
-            <div class="stat-card" style="margin-bottom:1.25rem;">
-              <div style="font-size:15px;font-weight:600;
-                          color:var(--text-main);margin-bottom:4px;">
-                Choose a file from your device
-              </div>
-              <div style="font-size:13px;color:var(--text-muted);">
-                PDF, JPG, PNG supported &nbsp;·&nbsp;
-                Your file will be encrypted before it is stored
-              </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.caption("Your file will be encrypted before it is stored")
 
         uploaded_file = st.file_uploader(
-            "Click Browse files to open your folder",
+            "Upload a document",
             type=["pdf", "jpg", "jpeg", "png"],
+            label_visibility="collapsed",
         )
 
         if uploaded_file is not None:
@@ -128,18 +124,24 @@ def render_upload():
         pin = st.text_input("PIN", type="password", max_chars=4,
                             placeholder="****", label_visibility="collapsed")
 
+        locked, remaining = is_locked_out("upload_pin")
+        if locked:
+            st.error(f"Too many incorrect PIN attempts. Try again in {remaining}s.")
+
         c1, c2 = st.columns(2)
         with c1:
             if st.button("← Back", key="pin_back"):
                 st.session_state.upload_step = "select"
                 st.rerun()
         with c2:
-            if st.button("Confirm PIN →", key="pin_ok", use_container_width=True):
-                if pin == DEMO_PIN:
+            if st.button("Confirm PIN →", key="pin_ok", use_container_width=True, disabled=locked):
+                if verify_pin(user_email, pin):
+                    reset_attempts("upload_pin")
                     st.session_state.upload_step = "password"
                     st.rerun()
                 else:
-                    st.error("Incorrect PIN. (Demo: 2648)")
+                    register_failed_attempt("upload_pin")
+                    st.error("Incorrect PIN.")
 
     # ══════════════════════════════════════════════════════════════════════
     # STEP 3 — Password (derives encryption key)
@@ -179,12 +181,12 @@ def render_upload():
                 st.rerun()
         with c2:
             if st.button("Encrypt and Upload →", key="pass_ok", use_container_width=True):
-                if password == DEMO_PASSWORD:
+                if verify_password(user_email, password):
                     st.session_state.user_password = password
                     st.session_state.upload_step = "uploading"
                     st.rerun()
                 else:
-                    st.error("Incorrect password. (Demo: password123)")
+                    st.error("Incorrect password.")
 
     # ══════════════════════════════════════════════════════════════════════
     # STEP 4 — Processing
@@ -197,33 +199,67 @@ def render_upload():
 
       file_data = f["data"]
 
+      file_ext = f["name"].rsplit(".", 1)[-1].lower() if "." in f["name"] else ""
+
       with st.status(
           "Processing your document securely...",
           expanded=True
       ) as status:
 
-          for step in PIPELINE_STEPS:
+          st.write(PIPELINE_STEPS[0])
+          preprocessed_data = file_data
+          if file_ext in ["jpg", "jpeg", "png"]:
+              try:
+                  preprocessed_data = preprocess_image(file_data)
+              except Exception as e:
+                  st.warning(f"Preprocessing skipped: {e}")
 
-              st.write(step)
+          # ── OCR ──────────────────────────────────────────────────────
+          st.write(PIPELINE_STEPS[1])
+          extracted_text = ""
+          try:
+              if file_ext in ["jpg", "jpeg", "png"]:
+                  extracted_text = extract_text_from_image(preprocessed_data)
+              elif file_ext == "pdf":
+                  extracted_text = extract_text_from_pdf(file_data)
+          except Exception as e:
+              st.warning(f"OCR skipped: {e}")
 
-              time.sleep(0.7)
+          # ── Sensitive data detection (flag only — text is never stored) ────
+          st.write(PIPELINE_STEPS[2])
+          sensitive_fields = detect_sensitive_fields(extracted_text)
+          if sensitive_fields:
+              st.warning(f"Sensitive info detected: {', '.join(sensitive_fields.keys())}. This document's text is not stored anywhere — only a flag is saved.")
+          del extracted_text  # discard OCR text now that we only need the boolean flag
 
+          st.write(PIPELINE_STEPS[3])
           encrypted_data = encrypt_file(
              file_data,
              password
 )
 
+          # Encrypt the filename itself with the same password-derived key scheme —
+          # decryptable only with the correct password, same as the file content
+          encrypted_name = encrypt_file(
+              f["name"].encode(),
+              password
+          )
+
+          st.write(PIPELINE_STEPS[4])
           file_hash = generate_hash(
              encrypted_data
 )
+
+          st.write(PIPELINE_STEPS[5])
 
           os.makedirs(
             "uploads",
             exist_ok=True
 )
 
+          # Purely random identifier — no original filename embedded anywhere
           encrypted_filename = (
-               f"{f['name']}.enc"
+               f"{user_email}_{uuid.uuid4().hex}.enc"
 )
 
           save_path = os.path.join(
@@ -233,7 +269,7 @@ def render_upload():
 
           hash_path = os.path.join(
             "uploads",
-            f"{f['name']}.hash"
+            f"{encrypted_filename}.hash"
 )
 
           with open(
@@ -252,13 +288,14 @@ def render_upload():
           salt = encrypted_data[:16]
 
           save_document_metadata(
-              user_id="demo_user",          # Replace later with logged-in user's ID
-              filename=f["name"],
+              user_id=user_email,
+              encrypted_name=encrypted_name,
               encrypted_filename=encrypted_filename,
               s3_key=encrypted_filename,
               file_hash=file_hash,
               salt=salt,
-              size=len(file_data)
+              size=len(file_data),
+              has_sensitive_data=bool(sensitive_fields)
           )
           with open(
                hash_path,
@@ -322,4 +359,3 @@ def render_upload():
           st.session_state.user_password = None
 
           st.rerun()
-      

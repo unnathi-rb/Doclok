@@ -1,5 +1,7 @@
 import streamlit as st
 
+from utils.mongodb import verify_pin, update_pin
+
 SECURITY_ITEMS = [
     {
         "title": "File encryption — AES-256",
@@ -28,13 +30,15 @@ SECURITY_ITEMS = [
     },
 ]
 
-DEMO_PIN = "2648"
-
 def render_security():
-    st.markdown("""
+    user_email = st.session_state.user_email
+    user_name  = st.session_state.get("user_name", "User")
+    initials   = "".join([p[0].upper() for p in user_name.split()[:2]]) or "U"
+
+    st.markdown(f"""
         <div class="topbar">
           <div class="topbar-title">Security</div>
-          <div class="avatar-sm">UN</div>
+          <div class="avatar-sm">{initials}</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -51,13 +55,14 @@ def render_security():
             confirm_pin = st.text_input("Confirm PIN", type="password", max_chars=4, placeholder="****")
 
         if st.form_submit_button("Update PIN", use_container_width=False):
-            if current_pin != DEMO_PIN:
+            if not verify_pin(user_email, current_pin):
                 st.error("Your current PIN is incorrect.")
             elif new_pin != confirm_pin:
                 st.error("The new PINs you entered do not match.")
             elif len(new_pin) < 4:
                 st.error("PIN must be exactly 4 digits.")
             else:
+                update_pin(user_email, new_pin)
                 st.success("PIN updated successfully.")
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)

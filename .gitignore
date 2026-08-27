@@ -1,14 +1,15 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 
-# Virtual Environment
+# Virtual Environments
 doclok_env/
 venv/
-.env/
+.venv/
 
 # Environment variables
 .env
+.env.*
 
 # Uploaded files
 uploads/

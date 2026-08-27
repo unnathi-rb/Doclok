@@ -202,18 +202,19 @@ section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
   justify-content: flex-start !important;
   letter-spacing: 0 !important;
 }
-/* Make Browse label button small and styled */
-div[data-testid="stFileUploader"] > label {
-    background: #1A1930 !important;
-    color: #C4BFFF !important;
-    border: 1px solid #2D2B50 !important;
-    border-radius: 8px !important;
-    padding: 8px 20px !important;
-    font-size: 14px !important;
-    cursor: pointer !important;
-    display: inline-block !important;
-    width: auto !important;
+/* Style the real file uploader dropzone (drag-and-drop area + Browse button) */
+[data-testid="stFileUploaderDropzone"] {
+    background: var(--card-bg) !important;
+    border: 1.5px dashed var(--border) !important;
+    border-radius: 10px !important;
+    padding: 1.25rem !important;
 }
-div[data-testid="stFileUploader"] > div {
-    display: none !important;
+[data-testid="stFileUploaderDropzoneInstructions"] {
+    color: var(--text-muted) !important;
+}
+div[data-testid="stFileUploader"] button {
+    background: #534AB7 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 8px !important;
 }
