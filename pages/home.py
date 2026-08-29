@@ -28,10 +28,6 @@ def render_home():
     # Status strip
     st.markdown("""
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.75rem;">
-            <span class="badge badge-indigo">AES-256 active</span>
-            <span class="badge badge-indigo">MFA enabled</span>
-            <span class="badge badge-indigo">PIN set</span>
-            <span class="badge badge-indigo">AWS S3 connected</span>
             <span class="badge badge-indigo">Session: 15 min timeout</span>
         </div>
     """, unsafe_allow_html=True)

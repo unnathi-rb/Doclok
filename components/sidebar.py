@@ -5,7 +5,6 @@ NAV_ITEMS = [
     ("Upload",       "Upload"),
     ("My Documents", "My Documents"),
     ("Security",     "Security"),
-    ("Profile",      "Profile"),
 ]
 
 def render_sidebar():
@@ -14,6 +13,18 @@ def render_sidebar():
 
     user_name = st.session_state.get("user_name", "User")
     initials  = "".join([p[0].upper() for p in user_name.split()[:2]]) or "U"
+
+    st.markdown("""
+        <style>
+        section[data-testid="stSidebar"] div[data-testid="stButton"] {
+            margin-top: 0px !important;
+            margin-bottom: 0px !important;
+        }
+        section[data-testid="stSidebar"] div[data-testid="element-container"] {
+            margin-bottom: 0px !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
     with st.sidebar:
         # Logo
@@ -54,32 +65,34 @@ def render_sidebar():
                     st.rerun()
 
         st.markdown("<hr style='margin:.6rem 0;border:none;border-top:1px solid var(--border)'>", unsafe_allow_html=True)
-
-        # Dark / Light toggle
-        toggle_label = "Light Mode" if dark else "Dark Mode"
-        if st.button(toggle_label, key="toggle_theme", use_container_width=True):
-            st.session_state.dark_mode = not st.session_state.dark_mode
-            st.rerun()
-
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-
-        # User info
+# User info — name + round icon, with a "View profile" action instead
+        # of a separate Profile nav item / static "Personal vault" label
         st.markdown(f"""
             <div style="display:flex;align-items:center;gap:10px;padding:6px 0;">
               <div style="width:34px;height:34px;border-radius:50%;
                           background:var(--indigo-50);
                           display:flex;align-items:center;justify-content:center;
                           font-size:12px;font-weight:700;color:#3C3489;flex-shrink:0;">{initials}</div>
-              <div>
-                <div style="font-size:13px;font-weight:600;color:var(--text-main);">{user_name}</div>
-                <div style="font-size:11px;color:var(--text-muted);">Personal vault</div>
-              </div>
+              <div style="font-size:13px;font-weight:600;color:var(--text-main);">{user_name}</div>
             </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+        if st.button("View profile", key="nav_view_profile", use_container_width=True):
+            st.session_state.current_page = "Profile"
+            st.rerun()
+
+        
+        st.markdown("<hr style='margin:.6rem 0;border:none;border-top:1px solid var(--border)'>", unsafe_allow_html=True)
+        
+        # Dark / Light toggle
+        toggle_label = "Light Mode" if dark else "Dark Mode"
+        if st.button(toggle_label, key="toggle_theme", use_container_width=True):
+            st.session_state.dark_mode = not st.session_state.dark_mode
+            st.rerun()
 
         if st.button("Logout", key="nav_logout", use_container_width=True):
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
+            
+                

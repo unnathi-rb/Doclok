@@ -40,4 +40,3 @@ opencv-python-headless
 pytesseract
 PyMuPDF
 Pillow
-twilio

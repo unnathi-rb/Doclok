@@ -19,23 +19,23 @@ users_collection = db["users"]
 def save_document_metadata(
     user_id,
     encrypted_name,
+    display_name_enc,
     encrypted_filename,
     s3_key,
     file_hash,
     salt,
     size,
-    has_sensitive_data=False,
 ):
     document = {
         "user_id": user_id,
         "encrypted_name": encrypted_name,
+        "display_name_enc": display_name_enc,
         "encrypted_filename": encrypted_filename,
         "s3_key": s3_key,
         "hash": file_hash,
         "salt": salt.hex(),
         "size": size,
         "status": "Verified",
-        "has_sensitive_data": has_sensitive_data,
         "uploaded_at": datetime.utcnow(),
     }
 

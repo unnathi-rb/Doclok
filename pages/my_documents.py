@@ -1,7 +1,7 @@
 import streamlit as st
 
 import os
-from utils.encryption import decrypt_file
+from utils.encryption import decrypt_file, decrypt_filename
 from utils.hash_utils import verify_sha256
 from utils.mongodb import get_all_documents
 from utils.s3_utils import (
@@ -40,11 +40,17 @@ def render_my_documents():
                     border-radius:10px;padding:10px 16px;margin-bottom:1.5rem;
                     font-size:13px;color:var(--indigo-800);">
           Viewing or downloading a file requires your PIN and your password.
-          Your password is used to decrypt the file (and its filename) — it is never stored anywhere.
-          Because filenames are encrypted, they aren't visible until you unlock a document.
+          Your password decrypts the actual file content — it is never stored anywhere.
+          Filenames are encrypted at rest and in cloud storage, but are shown here for your convenience.
         </div>
     """, unsafe_allow_html=True)
 
+    search = st.text_input(
+        "",
+        placeholder="Search documents...",
+        key="my_docs_search",
+        label_visibility="collapsed"
+    )
 
     documents = get_all_documents(user_email)
 
@@ -52,9 +58,16 @@ def render_my_documents():
 
     for document in documents:
 
+        try:
+            shown_name = decrypt_filename(document["display_name_enc"])
+        except Exception:
+            shown_name = "🔒 Encrypted document"
+
         docs.append({
 
             "id": document["s3_key"],
+
+            "display_name": shown_name,
 
             "encrypted_name": document["encrypted_name"],
 
@@ -66,27 +79,30 @@ def render_my_documents():
 
             "date": document["uploaded_at"].strftime("%d %b %Y"),
 
-            "hash": document["hash"],
-
-            "has_sensitive_data": document.get("has_sensitive_data", False)
+            "hash": document["hash"]
 
         })
+
+    if search:
+
+        docs = [
+            doc
+            for doc in docs
+            if search.strip().lower() in doc["display_name"].lower()
+        ]
+        st.caption(f"{len(docs)} document{'s' if len(docs) != 1 else ''} match \"{search}\"")
 
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
     for doc in docs:
         col_main, col_view, col_dl, col_del = st.columns([5, 1, 1, 1])
 
         with col_main:
-            sensitive_badge = (
-                '&nbsp;<span class="badge" style="font-size:11px;background:#FDECEC;color:#B3261E">⚠ Sensitive info</span>'
-                if doc.get("has_sensitive_data") else ""
-            )
-            display_name = st.session_state.get(f"decrypted_name_{doc['id']}", "🔒 Encrypted document")
+            display_name = doc["display_name"]
             st.markdown(f"""
                 <div class="doc-row">
                   <div style="flex:1;">
                     <div class="doc-name">{display_name}
-                      &nbsp;<span class="badge badge-indigo" style="font-size:11px">{doc["status"]}</span>{sensitive_badge}
+                      &nbsp;<span class="badge badge-indigo" style="font-size:11px">{doc["status"]}</span>
                     </div>
                     <div class="doc-meta">
                       {doc['category']} &nbsp;·&nbsp; {doc['size']} &nbsp;·&nbsp; {doc['date']}

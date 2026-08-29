@@ -39,13 +39,35 @@ section[data-testid="stSidebar"] ul { display: none !important; }
 section[data-testid="stSidebarNavItems"] { display: none !important; }
 div[data-testid="stSidebarNavSeparator"] { display: none !important; }
 section[data-testid="stSidebar"] > div:first-child { padding-top: 0 !important; }
+[data-testid="collapsedControl"] {
+    display: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
+
+if st.session_state.authenticated:
+    st.markdown("""
+        <style>
+        section[data-testid="stSidebar"] {
+            min-width: 280px !important;
+            max-width: 280px !important;
+            transform: none !important;
+            visibility: visible !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <style>
+        section[data-testid="stSidebar"] {
+            display: none !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
 # Always load light CSS as base
 with open("assets/style_light.css", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-
 # Load dark CSS on top if dark mode is on
 if st.session_state.dark_mode:
     with open("assets/dark.css", encoding="utf-8") as f:

@@ -8,7 +8,6 @@ from utils.mongodb import (
     update_pin
 )
 from utils.otp_utils import generate_otp, send_otp_email, otp_expired
-from utils.sms_utils import send_otp_sms
 from utils.recovery_utils import (
     generate_recovery_key,
     encrypt_password_with_recovery_key,
@@ -107,7 +106,7 @@ def render_login():
 
             su_name  = st.text_input("Full name", placeholder="XYZ", key="su_name")
             su_email = st.text_input("Email address", placeholder="you@example.com", key="su_email")
-            su_phone = st.text_input("Mobile number (for OTP)", placeholder="98765 43210", key="su_phone")
+            su_phone = st.text_input("Mobile number", placeholder="98765 43210", key="su_phone")
 
             st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
             st.markdown("**Set your password**")
@@ -181,13 +180,6 @@ def render_login():
                 email    = st.text_input("Email address", placeholder="you@example.com", key="login_email")
                 password = st.text_input("Password", type="password", key="login_password")
 
-                otp_method = st.radio(
-                    "Receive OTP via",
-                    ["Email", "SMS"],
-                    horizontal=True,
-                    key="otp_method_choice"
-                )
-
                 if st.button("Continue", key="btn_password", use_container_width=True):
 
                     user = login_user(
@@ -200,23 +192,15 @@ def render_login():
                         st.session_state.user = user
                         st.session_state.user_email = email
                         st.session_state.user_name = user["name"]
-                        st.session_state.otp_method = otp_method
 
                         # Guard: skip re-sending if one was already sent very recently
-                        # (prevents duplicate sends from double-clicks/rapid reruns)
+                        # (prevents duplicate emails from double-clicks/rapid reruns)
                         last_sent = st.session_state.get("otp_sent_at", 0)
                         if time.time() - last_sent > 5:
                             st.session_state.otp_sent_at = time.time()  # set BEFORE the slow network call
                             otp = generate_otp()
                             try:
-                                if otp_method == "SMS":
-                                    phone = user.get("phone")
-                                    if not phone:
-                                        st.error("No phone number on file for this account. Choose Email instead.")
-                                        st.stop()
-                                    send_otp_sms(phone, otp)
-                                else:
-                                    send_otp_email(email, otp)
+                                send_otp_email(email, otp)
                                 st.session_state.generated_otp = otp
                             except Exception as e:
                                 st.error(f"Could not send OTP: {e}")
@@ -269,19 +253,11 @@ def render_login():
             elif step == "otp":
                 st.markdown("<span style='background:#EEEDFE;color:#3C3489;font-size:11px;font-weight:500;padding:3px 12px;border-radius:20px'>Step 2 of 3 — verification</span>", unsafe_allow_html=True)
                 st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+                st.markdown("**Check your email**")
 
-                otp_method = st.session_state.get("otp_method", "Email")
                 email = st.session_state.user_email
-
-                if otp_method == "SMS":
-                    phone = st.session_state.user.get("phone", "")
-                    masked = ("*" * max(len(phone) - 4, 0)) + phone[-4:] if phone else "your phone"
-                    st.markdown("**Check your phone**")
-                    st.caption(f"OTP sent via SMS to **{masked}**")
-                else:
-                    masked = email[:2] + "***@" + email.split("@")[1]
-                    st.markdown("**Check your email**")
-                    st.caption(f"OTP sent to **{masked}**")
+                masked = email[:2] + "***@" + email.split("@")[1]
+                st.caption(f"OTP sent to **{masked}**")
 
                 otp_input = st.text_input("Enter 6-digit OTP", max_chars=6, key="otp_val", placeholder="e.g. 483192")
 
@@ -321,11 +297,7 @@ def render_login():
                     st.session_state.otp_sent_at = time.time()  # set BEFORE the slow network call
                     new_otp = generate_otp()
                     try:
-                        if otp_method == "SMS":
-                            phone = st.session_state.user.get("phone")
-                            send_otp_sms(phone, new_otp)
-                        else:
-                            send_otp_email(email, new_otp)
+                        send_otp_email(email, new_otp)
                         st.session_state.generated_otp = new_otp
                         st.success("A new OTP has been sent.")
                     except Exception as e:

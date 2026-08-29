@@ -1,29 +1,35 @@
 :root {
-  --indigo-50:  #1A1930;
-  --indigo-100: #2D2B50;
-  --indigo-200: #3D3A6A;
-  --indigo-400: #8B83F0;
-  --indigo-600: #7B72E9;
-  --indigo-800: #C4BFFF;
-  --surface:    #0D0D14;
-  --white:      #111119;
-  --border:     #1E1E2E;
-  --border-mid: #2D2B50;
-  --text-main:  #E8E8FF;
-  --text-muted: #B0B0CC;
-  --text-hint:  #8080A8;
-  --card-bg:    #161620;
-  --card-hover: #1C1C2A;
-  --success-bg: #162816;
-  --success-tx: #7DCF7D;
-  --warning-bg: #2A1F0E;
-  --warning-tx: #D4A843;
-  --danger-bg:  #2A1212;
-  --danger-tx:  #E87878;
-  --info-bg:    #0E1E2E;
-  --info-tx:    #5AABEE;
-}
+  --indigo-50:  #19172B;
+  --indigo-100: #211F3A;
+  --indigo-200: #302D52;
+  --indigo-400: #9189F3;
+  --indigo-600: #746BE5;
+  --indigo-800: #C7C2FF;
 
+  --surface:    #0E0E16;
+  --white:      #13131D;
+  --border:     #252536;
+  --border-mid: #353356;
+
+  --text-main:  #F0F0FF;
+  --text-muted: #B7B7D0;
+  --text-hint:  #85859F;
+
+  --card-bg:    #181822;
+  --card-hover: #20202C;
+
+  --success-bg: #162A1D;
+  --success-tx: #80D88B;
+
+  --warning-bg: #2C220F;
+  --warning-tx: #E5B94E;
+
+  --danger-bg:  #301616;
+  --danger-tx:  #F08080;
+
+  --info-bg:    #102536;
+  --info-tx:    #68B5F2;
+}
 /* ── Page background ── */
 html, body, [class*="css"], .stApp {
     background-color: #0D0D14 !important;
@@ -34,7 +40,21 @@ html, body, [class*="css"], .stApp {
 .block-container { background: #0D0D14 !important; }
 
 /* ── All text defaults ── */
-p, span, div, label, li { color: #C8C8E8 !important; }
+p, li {
+    color: var(--text-muted) !important;
+}
+
+label {
+    color: #D0D0E8 !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-main) !important;
+}
+
+strong {
+    color: var(--text-main) !important;
+}
 h1, h2, h3, h4          { color: #E8E8FF !important; }
 strong                   { color: #E8E8FF !important; }
 small                    { color: #A0A0C0 !important; }
@@ -82,22 +102,22 @@ section[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
 
 /* ── Main content buttons ── */
 .block-container div[data-testid="stButton"] > button {
-    background: #534AB7 !important;
+    background: var(--indigo-600) !important;
     color: #E8E8FF !important;
     border: none !important;
     border-radius: 8px !important;
 }
 .block-container div[data-testid="stButton"] > button:hover {
-    background: #6B62D4 !important;
+    background: var(--indigo-400) !important;
 }
 div[data-testid="stFormSubmitButton"] > button {
-    background: #534AB7 !important;
+    background: var(--indigo-600) !important;
     color: #E8E8FF !important;
     border: none !important;
     border-radius: 8px !important;
 }
 div[data-testid="stFormSubmitButton"] > button:hover {
-    background: #6B62D4 !important;
+    background: var(--indigo-400) !important;
 }
 
 /* ── Text inputs ── */
@@ -169,7 +189,7 @@ li[role="option"]:hover {
 }
 
 /* ── File uploader ── */
-div[data-testid="stFileUploader"] {
+/* div[data-testid="stFileUploader"] {
     background: #161620 !important;
     border-radius: 8px !important;
 }
@@ -191,7 +211,7 @@ div[data-testid="stFileUploadDropzone"] small {
     background: transparent !important;
 }
 /* The white Upload button */
-div[data-testid="stFileUploadDropzone"] button,
+/* div[data-testid="stFileUploadDropzone"] button,
 div[data-testid="stFileUploader"] button {
     background: #1A1930 !important;
     color: #C4BFFF !important;
@@ -215,12 +235,60 @@ div[data-testid="stFileUploader"] button svg {
 [data-baseweb="file-uploader"] {
     background: #161620 !important;
     border-color: #2D2B50 !important;
-}
-[data-baseweb="file-uploader"] * {
+} */ */
+/* [data-baseweb="file-uploader"] * {
     background: #161620 !important;
     color: #C8C8E8 !important;
+} */
+/* ── File uploader ── */
+
+div[data-testid="stFileUploader"] {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
 }
 
+div[data-testid="stFileUploadDropzone"] {
+    background: var(--card-bg) !important;
+    border: 1px dashed var(--border-mid) !important;
+    border-radius: 10px !important;
+    padding: 14px !important;
+}
+
+div[data-testid="stFileUploadDropzone"] > div {
+    background: transparent !important;
+}
+
+div[data-testid="stFileUploadDropzone"] p,
+div[data-testid="stFileUploadDropzone"] span,
+div[data-testid="stFileUploadDropzone"] small {
+    background: transparent !important;
+    color: var(--text-hint) !important;
+}
+
+div[data-testid="stFileUploadDropzone"] button {
+    background: var(--indigo-50) !important;
+    color: var(--indigo-800) !important;
+    border: 1px solid var(--border-mid) !important;
+    border-radius: 7px !important;
+    padding: 6px 16px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+}
+
+div[data-testid="stFileUploadDropzone"] button:hover {
+    background: var(--indigo-100) !important;
+    border-color: var(--indigo-600) !important;
+}
+
+div[data-testid="stFileUploadDropzone"] button span {
+    color: var(--indigo-800) !important;
+}
+
+div[data-testid="stFileUploadDropzone"] button svg {
+    fill: var(--indigo-800) !important;
+    stroke: var(--indigo-800) !important;
+}
 /* ── Form container ── */
 div[data-testid="stForm"] {
     background: #161620 !important;
@@ -331,7 +399,7 @@ div[data-testid="stAlert"] span {
 }
 
 .prog-wrap { background: #1E1E2E !important; }
-.prog-bar  { background: #534AB7 !important; }
+.prog-bar  { background: var(--indigo-600) !important; }
 
 .hash-box {
     background: #0D0D14 !important;
@@ -436,7 +504,7 @@ div[data-testid="stFileUploadDropzone"] small {
     font-size: 13px !important;
 }
 
-/* Make Browse label button small and styled */
+/* Make Browse label button small and styled
 div[data-testid="stFileUploader"] > label {
     background: #1A1930 !important;
     color: #C4BFFF !important;
@@ -450,4 +518,4 @@ div[data-testid="stFileUploader"] > label {
 }
 div[data-testid="stFileUploader"] > div {
     display: none !important;
-}
+} */

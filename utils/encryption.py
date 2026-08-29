@@ -74,3 +74,24 @@ def decrypt_file(encrypted_file_data: bytes, password: str):
     decrypted_data = cipher.decrypt(encrypted_data)
 
     return decrypted_data
+# ── Server-side filename encryption (master key, not the user's password) ──
+# The S3 object key / on-disk filename is always a random UUID (see upload.py),
+# so the real filename never appears in S3 or on disk. This master-key
+# encryption is what keeps the filename encrypted at rest in MongoDB too,
+# while still letting the app decrypt it instantly to show the account
+# holder their document names on the page — without asking for the PIN/
+# password just to see what a file is called.
+def _master_fernet():
+    secret = os.getenv("APP_MASTER_KEY")
+    if not secret:
+        raise RuntimeError("APP_MASTER_KEY is not set in the environment (.env)")
+    key = base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())
+    return Fernet(key)
+
+
+def encrypt_filename(filename: str) -> bytes:
+    return _master_fernet().encrypt(filename.encode())
+
+
+def decrypt_filename(token: bytes) -> str:
+    return _master_fernet().decrypt(token).decode()
