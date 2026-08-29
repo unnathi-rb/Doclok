@@ -6,10 +6,7 @@ python-dotenv
 google-generativeai
 
 easyocr
-opencv-python-headless
-pytesseract
-PyMuPDF
-Pillow
+
 
 numpy
 pandas
@@ -25,18 +22,11 @@ python-multipart
 GitPython
 
 watchdog
-
 uvicorn
 starlette
-
 protobuf
-
 pyarrow
-
 altair
 pydeck
 certifi
-opencv-python-headless
-pytesseract
-PyMuPDF
-Pillow
+
