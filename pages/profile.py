@@ -38,11 +38,7 @@ def render_profile():
             st.text_input("Full name", value=user_name)
         with col2:
             st.text_input("Email", value=user_email, disabled=True)
-        col3, col4 = st.columns(2)
-        with col3:
-            st.text_input("Mobile number", value="")
-        with col4:
-            st.selectbox("Account type", ["Personal", "Student", "Professional"])
+        st.text_input("Mobile number", value="")
 
         if st.form_submit_button("Save changes"):
             st.success("Profile updated.")
