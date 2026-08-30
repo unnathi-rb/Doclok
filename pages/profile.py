@@ -1,4 +1,6 @@
 import streamlit as st
+from utils.mongodb import get_all_documents, delete_document, delete_user
+from utils.s3_utils import delete_from_s3
 
 def render_profile():
     user_name  = st.session_state.get("user_name", "User")
@@ -38,7 +40,11 @@ def render_profile():
             st.text_input("Full name", value=user_name)
         with col2:
             st.text_input("Email", value=user_email, disabled=True)
-        st.text_input("Mobile number", value="")
+        col3, col4 = st.columns(2)
+        with col3:
+            st.text_input("Mobile number", value="")
+        with col4:
+            st.selectbox("Account type", ["Personal", "Student", "Professional"])
 
         if st.form_submit_button("Save changes"):
             st.success("Profile updated.")
@@ -59,7 +65,49 @@ def render_profile():
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    if st.button("Delete my account"):
-        st.error("Disabled in demo.")
+    if "confirm_delete_account" not in st.session_state:
+        st.session_state.confirm_delete_account = False
+
+    if not st.session_state.confirm_delete_account:
+        if st.button("Delete my account"):
+            st.session_state.confirm_delete_account = True
+            st.rerun()
+    else:
+        st.warning(
+            f"This will permanently delete all documents and account data for "
+            f"**{user_email}**. This cannot be undone."
+        )
+        type_confirm = st.text_input(
+            "Type DELETE to confirm",
+            key="delete_account_confirm_text"
+        )
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Cancel", key="cancel_delete_account"):
+                st.session_state.confirm_delete_account = False
+                st.rerun()
+        with c2:
+            if st.button(
+                "Permanently delete account",
+                key="confirm_delete_account_btn",
+                disabled=(type_confirm != "DELETE"),
+            ):
+                # Delete every document's file (S3) and metadata (MongoDB)
+                for doc in get_all_documents(user_email):
+                    try:
+                        delete_from_s3(doc["s3_key"])
+                    except Exception:
+                        pass
+                    delete_document(doc["s3_key"])
+
+                # Delete the user's own account record
+                delete_user(user_email)
+
+                # Clear session and send back to login
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+
+                st.success("Account and all data deleted.")
+                st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
