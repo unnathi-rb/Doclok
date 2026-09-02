@@ -130,6 +130,11 @@ def register_user(
 
     return True
 
+def delete_user(email):
+    users_collection.delete_one(
+        {"email": email}
+    )
+
 def get_recovery_data(email):
     user = users_collection.find_one({"email": email})
     if not user or not user.get("recovery_password_enc"):

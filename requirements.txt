@@ -1,7 +1,7 @@
 streamlit
-
 pymongo
 python-dotenv
+<<<<<<< HEAD
 google-generativeai
 easyocr
 numpy
@@ -21,3 +21,8 @@ altair
 pydeck
 certifi
 
+=======
+certifi
+boto3
+cryptography
+>>>>>>> 51fff7c52431454c8ea2a837cd9b30ee071a633d
