@@ -17,6 +17,10 @@ from utils.mongodb import (
     save_document_metadata,
     delete_document,
     users_collection,
+    create_folder,
+    get_folders,
+    delete_folder,
+    delete_user,
 )
 from utils.otp_utils import generate_otp, send_otp_email, otp_expired
 from utils.recovery_utils import (
@@ -265,6 +269,7 @@ def upload_document(
     pin: str = Form(...),
     password: str = Form(...),
     file: UploadFile = File(...),
+    folder: str = Form(None),
     email: str = Depends(get_current_user_email),
 ):
     lockout_key = f"upload_pin_{email}"
@@ -300,6 +305,7 @@ def upload_document(
         file_hash=file_hash,
         salt=salt,
         size=len(file_data),
+        folder=(folder if folder else None),
     )
 
     return {"message": "Document uploaded successfully.", "s3_key": encrypted_filename}
@@ -320,8 +326,35 @@ def list_documents(email: str = Depends(get_current_user_email)):
             "size_kb": round(doc["size"] / 1024, 1),
             "date": doc["uploaded_at"].isoformat(),
             "status": doc["status"],
+            "folder": doc.get("folder"),
         })
     return result
+
+
+class CreateFolderRequest(BaseModel):
+    name: str
+
+
+@app.post("/folders")
+def create_folder_route(req: CreateFolderRequest, email: str = Depends(get_current_user_email)):
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(400, "Folder name can't be empty.")
+    created = create_folder(email, name)
+    if not created:
+        raise HTTPException(409, "A folder with that name already exists.")
+    return {"message": "Folder created.", "name": name}
+
+
+@app.get("/folders")
+def list_folders_route(email: str = Depends(get_current_user_email)):
+    return get_folders(email)
+
+
+@app.delete("/folders/{name}")
+def delete_folder_route(name: str, email: str = Depends(get_current_user_email)):
+    delete_folder(email, name)
+    return {"message": "Folder deleted. Its documents were moved back to the root."}
 
 
 @app.post("/documents/{doc_id}/verify-pin")
@@ -393,6 +426,18 @@ def security_update_pin(req: UpdatePinRequest, email: str = Depends(get_current_
 
     update_pin(email, req.new_pin)
     return {"message": "PIN updated successfully."}
+
+
+@app.delete("/account")
+def delete_account_route(email: str = Depends(get_current_user_email)):
+    for doc in get_all_documents(email):
+        try:
+            delete_from_s3(doc["s3_key"])
+        except Exception:
+            pass
+        delete_document(doc["s3_key"])
+    delete_user(email)
+    return {"message": "Account and all data deleted."}
 
 
 @app.get("/profile")

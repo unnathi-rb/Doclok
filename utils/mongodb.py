@@ -15,6 +15,8 @@ db = client["doclok"]
 
 documents_collection = db["documents"]
 
+folders_collection = db["folders"]
+
 users_collection = db["users"]
 def save_document_metadata(
     user_id,
@@ -25,6 +27,7 @@ def save_document_metadata(
     file_hash,
     salt,
     size,
+    folder=None,
 ):
     document = {
         "user_id": user_id,
@@ -37,6 +40,7 @@ def save_document_metadata(
         "size": size,
         "status": "Verified",
         "uploaded_at": datetime.utcnow(),
+        "folder": folder,
     }
 
     result = documents_collection.insert_one(document)
@@ -68,6 +72,44 @@ def get_total_documents(user_id):
     return documents_collection.count_documents(
         {"user_id": user_id}
     )
+
+
+# ── Folders (organizational only — a document's "folder" field is just
+# a plain string tag; the file itself is unaffected and still encrypted
+# the same way regardless of which folder it's filed under) ──────────
+
+def create_folder(user_id, name):
+    existing = folders_collection.find_one(
+        {"user_id": user_id, "name": name}
+    )
+    if existing:
+        return False
+    folders_collection.insert_one({
+        "user_id": user_id,
+        "name": name,
+        "created_at": datetime.utcnow(),
+    })
+    return True
+
+
+def get_folders(user_id):
+    folders = list(folders_collection.find({"user_id": user_id}))
+    result = []
+    for f in folders:
+        doc_count = documents_collection.count_documents(
+            {"user_id": user_id, "folder": f["name"]}
+        )
+        result.append({"name": f["name"], "doc_count": doc_count})
+    return result
+
+
+def delete_folder(user_id, name):
+    # Documents inside are NOT deleted — they're just unfiled back to root.
+    documents_collection.update_many(
+        {"user_id": user_id, "folder": name},
+        {"$set": {"folder": None}},
+    )
+    folders_collection.delete_one({"user_id": user_id, "name": name})
 
 
 def get_storage_used(user_id):
