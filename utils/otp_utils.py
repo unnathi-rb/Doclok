@@ -34,7 +34,7 @@ This code is valid for 5 minutes. If you did not try to log in, you can ignore t
             "Content-Type": "application/json",
         },
         json={
-            "from": f"DocLok <{SMTP_EMAIL}>",
+            "from": "DocLok <onboarding@resend.dev>",
             "to": [to_email],
             "subject": subject,
             "text": body,
