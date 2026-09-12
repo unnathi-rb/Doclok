@@ -1,15 +1,13 @@
 import random
-import smtplib
 import time
 import os
-import email.utils
-from email.mime.text import MIMEText
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-SMTP_EMAIL        = os.getenv("SMTP_EMAIL")
-SMTP_APP_PASSWORD = os.getenv("SMTP_APP_PASSWORD")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")
 
 OTP_VALID_SECONDS = 300  # 5 minutes
 
@@ -29,18 +27,23 @@ This code is valid for 5 minutes. If you did not try to log in, you can ignore t
 — DocLok
 """
 
-    msg = MIMEText(body)
-    msg["Subject"] = subject
-    msg["From"] = f"DocLok <{SMTP_EMAIL}>"
-    msg["To"] = to_email
-    msg["Reply-To"] = SMTP_EMAIL
-    msg["Date"] = email.utils.formatdate(localtime=True)
-    msg["Message-ID"] = email.utils.make_msgid(domain="doclok.local")
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "from": f"DocLok <{SMTP_EMAIL}>",
+            "to": [to_email],
+            "subject": subject,
+            "text": body,
+        },
+        timeout=20,
+    )
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+    if response.status_code not in (200, 201):
+        raise Exception(f"Resend email failed: {response.text}")
 
     return True
 
