@@ -6,3 +6,4 @@ boto3
 cryptography
 fastapi
 uvicorn
+PyJWT
