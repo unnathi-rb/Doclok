@@ -4,3 +4,5 @@ python-dotenv
 certifi
 boto3
 cryptography
+fastapi
+uvicorn
