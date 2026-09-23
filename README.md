@@ -28,7 +28,6 @@ DocLok is designed for individuals such as students, job seekers, working profes
 
 DocLok is a cloud-based document vault designed with a security-first approach. Instead of simply storing files, the system:
 
-- Detects and masks sensitive data
 - Encrypts documents before upload
 - Verifies file integrity during access
 - Adds multiple layers of authentication
@@ -43,7 +42,6 @@ Most existing platforms focus mainly on storing and sharing documents, with limi
 
 - **Encryption-First**: Documents are encrypted (AES-256) before cloud storage
 - **User-Controlled Keys**: Encryption key derived from user password (no server access)
-- **Content Protection**: Sensitive data is detected and masked before encryption
 - **MFA at Every Login**: OTP-based authentication for strong identity verification
 - **PIN-Based Access**: Additional PIN required for upload, view, and download
 - **Session Timeout**: Auto logout after inactivity for safety
@@ -54,9 +52,6 @@ Most existing platforms focus mainly on storing and sharing documents, with limi
 
 - **AES-256 Encryption**: Ensures strong confidentiality by encrypting documents before storage using a symmetric key algorithm.
 - **SHA-256 Hashing**: Generates a unique fingerprint of encrypted files to detect any tampering during retrieval.
-- **OCR-Based Text Extraction**: Uses Tesseract/EasyOCR to convert document images into machine-readable text.
-- **Image Preprocessing**: OpenCV is used to enhance image quality (noise removal, thresholding) to improve OCR accuracy.
-- **Sensitive Data Detection & Masking**: Pattern-based detection (using regex) identifies structured data like Aadhaar and PAN numbers and masks them before encryption.
 - **Multi-Factor Authentication (MFA)**: OTP-based verification adds an extra layer of user authentication.
 - **Cloud Storage (AWS S3)**: Stores encrypted documents securely with high availability and scalability.
 
@@ -68,38 +63,16 @@ Most existing platforms focus mainly on storing and sharing documents, with limi
 - User uploads image/PDF via frontend
 - File is sent to backend for processing
 
-#### 2. Image Preprocessing (OpenCV)
-- Convert to grayscale
-- Apply thresholding
-- Noise reduction
-- Improves OCR accuracy
-
-#### 3. OCR Processing
-- Extract text using Tesseract/EasyOCR
-- Output: raw textual content
-
-#### 4. Sensitive Data Detection
-- Regex patterns used for:
-  - Aadhaar (12 digits)
-  - PAN (ABCDE1234F format)
-- Identifies sensitive fields
-
-#### 5. Masking
-Partial masking example:
-```
-1234 5678 9012 → XXXX XXXX 9012
-```
-
-#### 6. Encryption (AES-256)
+#### 2. Encryption (AES-256)
 - File converted into byte stream
 - Encrypted using generated key
 - Output: unreadable binary data
 
-#### 7. Hash Generation (SHA-256)
+#### 3. Hash Generation (SHA-256)
 - Hash generated for encrypted file
 - Stored for integrity verification
 
-#### 8. Cloud Storage & Metadata Management
+#### 4. Cloud Storage & Metadata Management
 - Encrypted file uploaded to AWS S3 bucket as an object
 - MongoDB database stores metadata including:
   - File ID
@@ -202,9 +175,6 @@ This approach ensures that even if a session is active, critical operations rema
 - Combines backend logic and frontend interface in a single system
 - Handles complete processing pipeline:
   - File upload
-  - Image preprocessing (OpenCV)
-  - OCR (Tesseract/EasyOCR)
-  - Sensitive data masking
   - Encryption (AES-256)
   - Hashing (SHA-256)
 - Uses event-driven execution based on user actions (no separate APIs)
@@ -239,7 +209,7 @@ All file-related metadata is stored separately in a MongoDB database to enable e
 
 ### Hybrid Storage Approach
 
-The system follows a hybrid storage approach where encrypted files are stored in AWS S3, while their corresponding metadata is maintained in the database. 
+The system follows a hybrid storage approach where encrypted files are stored in AWS S3, while their corresponding metadata is maintained in the database.
 
 **During upload**:
 - File is processed, encrypted, and stored in an S3 bucket
@@ -305,7 +275,6 @@ This approach is cost-effective, easy to implement, and suitable for small-scale
 ### For Development and Testing
 
 **Estimated Costs**:
-- **OCR & Processing** (Tesseract, OpenCV): Free (open-source, runs locally or within app)
 - **Application Hosting** (Streamlit Cloud): Free (under community/free tier)
 - **Cloud Storage** (AWS S3): Small usage (approx 1-2 GB): ₹2 - ₹5 per month
 - **Data Transfer & Requests**: Minimal usage under free tier: ₹0 - ₹30 per month
@@ -339,11 +308,9 @@ This approach is cost-effective, easy to implement, and suitable for small-scale
 
 ### Month 1: Core Development
 - System setup and architecture
-- Document upload and preprocessing
-- OCR integration
+- Document upload and processing pipeline
 
 ### Month 2: Security Implementation
-- Sensitive data detection and masking
 - AES encryption implementation
 - Hashing for integrity
 
@@ -359,6 +326,24 @@ This approach is cost-effective, easy to implement, and suitable for small-scale
 
 - For organizational use, the platform can be enhanced with role-based access control, enabling different permission levels for employees and departments, along with features like secure document sharing and audit logs required in regulated industries.
 
-- Advanced capabilities such as automated document classification, AI-based sensitive data detection, and multi-factor authentication can be added to further strengthen security and improve efficiency.
+- Advanced capabilities such as automated document classification and multi-factor authentication can be added to further strengthen security and improve efficiency.
 
 - The project can also evolve into a product with basic and advanced access options (Paid version), allowing users and organizations to scale storage and security features based on their needs.
+
+<p align="center">
+  <img src="WhatsApp Image 2026-09-13 at 2.45.06 PM (2).jpeg" alt="DocLok Logo" width="200">
+  <img src="WhatsApp Image 2026-09-13 at 2.45.05 PM.jpeg" alt="DocLok Logo" width="200">
+</p>
+
+<p align="center">
+  <img src="WhatsApp Image 2026-09-13 at 2.45.06 PM (1).jpeg" alt="DocLok Logo" width="200">
+
+  <img src="WhatsApp Image 2026-09-13 at 2.45.06 PM.jpeg" alt="DocLok Logo" width="200">
+</p>
+<p align="center">
+  <img src="WhatsApp Image 2026-09-13 at 3.01.30 PM.jpeg" alt="DocLok Logo" width="200">
+  <img src="WhatsApp Image 2026-09-13 at 3.01.29 PM.jpeg" alt="DocLok Logo" width="200">
+</p>
+
+
+
