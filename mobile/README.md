@@ -1,17 +1,22 @@
-# doclok_mobile
+# DocLok Mobile App
 
-A new Flutter project.
+DocLok Mobile is the Flutter-based mobile application for DocLok, a secure personal document vault. It allows users to access their documents and manage their DocLok account directly from their Android device.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- User registration and login
+- Email OTP verification
+- PIN-based authentication
+- Secure session handling
+- User profile management
+- Connection with the DocLok FastAPI backend
+- Mobile-friendly interface for accessing DocLok services
 
-A few resources to get you started if this is your first Flutter project:
+## Tech Stack
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- **Flutter** – Mobile application development
+- **Dart** – Programming language
+- **FastAPI** – Backend API
+- **MongoDB** – User and application data
+- **AWS S3** – Secure document storage
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
