@@ -34,7 +34,7 @@ This code is valid for 5 minutes. If you did not try to log in, you can ignore t
             "Content-Type": "application/json",
         },
         json={
-            "from": "DocLok <onboarding@resend.dev>",
+            "from": "DocLok <noreply@doclok.tech>",
             "to": [to_email],
             "subject": subject,
             "text": body,
@@ -50,5 +50,6 @@ This code is valid for 5 minutes. If you did not try to log in, you can ignore t
 
 def otp_expired(sent_at):
     if not sent_at:
+        
         return True
     return (time.time() - sent_at) > OTP_VALID_SECONDS
