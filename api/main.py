@@ -1,5 +1,6 @@
 import base64
 import time
+import uuid
 
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -28,9 +29,18 @@ from utils.recovery_utils import (
     encrypt_password_with_recovery_key,
     decrypt_password_with_recovery_key,
 )
-from utils.encryption import encrypt_file, decrypt_file, encrypt_filename, decrypt_filename
+from utils.encryption import (
+    encrypt_file,
+    decrypt_file,
+    encrypt_filename,
+    decrypt_filename,
+)
 from utils.hash_utils import generate_hash, verify_sha256
-from utils.s3_utils import upload_to_s3, download_from_s3, delete_from_s3
+from utils.s3_utils import (
+    upload_to_s3,
+    download_from_s3,
+    delete_from_s3,
+)
 
 from api.auth import (
     create_login_session,
@@ -40,23 +50,38 @@ from api.auth import (
     create_access_token,
     decode_access_token,
 )
-from api.lockout import is_locked_out, register_failed_attempt, reset_attempts
-
-import uuid
+from api.lockout import (
+    is_locked_out,
+    register_failed_attempt,
+    reset_attempts,
+)
 
 
 app = FastAPI(title="DocLok API")
 security_scheme = HTTPBearer()
 
 
-# ── Auth dependency for protected endpoints ──────────────────────────────
-def get_current_user_email(creds: HTTPAuthorizationCredentials = Depends(security_scheme)) -> str:
+# ══════════════════════════════════════════════════════════════════════
+# AUTH DEPENDENCY
+# ══════════════════════════════════════════════════════════════════════
+
+def get_current_user_email(
+    creds: HTTPAuthorizationCredentials = Depends(security_scheme),
+) -> str:
     try:
         return decode_access_token(creds.credentials)
+
     except pyjwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Session expired, please log in again.")
+        raise HTTPException(
+            status_code=401,
+            detail="Session expired, please log in again.",
+        )
+
     except pyjwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid session token.")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid session token.",
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -108,160 +133,355 @@ class DocDecryptRequest(BaseModel):
     password: str
 
 
+class CreateFolderRequest(BaseModel):
+    name: str
+
+
+class UpdateProfileRequest(BaseModel):
+    name: str
+    email: str
+    phone: str
+
+
 # ══════════════════════════════════════════════════════════════════════
 # AUTH ROUTES
 # ══════════════════════════════════════════════════════════════════════
 
 @app.post("/auth/signup")
 def signup(req: SignupRequest):
-    if len(req.password) < 8:
-        raise HTTPException(400, "Password must be at least 8 characters.")
-    if len(req.pin) < 4:
-        raise HTTPException(400, "PIN must be 4 digits.")
 
-    clean_phone = req.phone.strip().replace(" ", "").replace("-", "")
+    if len(req.password) < 8:
+        raise HTTPException(
+            400,
+            "Password must be at least 8 characters.",
+        )
+
+    if len(req.pin) < 4:
+        raise HTTPException(
+            400,
+            "PIN must be 4 digits.",
+        )
+
+    clean_phone = (
+        req.phone
+        .strip()
+        .replace(" ", "")
+        .replace("-", "")
+    )
+
     if clean_phone and not clean_phone.startswith("+"):
         clean_phone = "+91" + clean_phone.lstrip("0")
 
     recovery_key = generate_recovery_key()
-    recovery_enc, recovery_salt = encrypt_password_with_recovery_key(req.password, recovery_key)
+
+    recovery_enc, recovery_salt = (
+        encrypt_password_with_recovery_key(
+            req.password,
+            recovery_key,
+        )
+    )
 
     created = register_user(
-        req.name, req.email, req.password, req.pin,
-        clean_phone, recovery_enc, recovery_salt,
+        req.name,
+        req.email,
+        req.password,
+        req.pin,
+        clean_phone,
+        recovery_enc,
+        recovery_salt,
     )
 
     if not created:
-        raise HTTPException(409, "An account with this email already exists.")
+        raise HTTPException(
+            409,
+            "An account with this email already exists.",
+        )
 
     return {
         "recovery_key": recovery_key,
-        "message": "Save this recovery key now — it will not be shown again."
+        "message": (
+            "Save this recovery key now — "
+            "it will not be shown again."
+        ),
     }
 
 
 @app.post("/auth/login/password")
 def login_password(req: LoginPasswordRequest):
-    user = login_user(req.email, req.password)
-    if not user:
-        raise HTTPException(401, "Invalid email or password.")
 
-    token = create_login_session(req.email, user)
+    user = login_user(
+        req.email,
+        req.password,
+    )
+
+    if not user:
+        raise HTTPException(
+            401,
+            "Invalid email or password.",
+        )
+
+    token = create_login_session(
+        req.email,
+        user,
+    )
 
     otp = generate_otp()
+
     try:
-        send_otp_email(req.email, otp)
+        send_otp_email(
+            req.email,
+            otp,
+        )
     except Exception as e:
-        raise HTTPException(502, f"Could not send OTP: {e}")
+        raise HTTPException(
+            502,
+            f"Could not send OTP: {e}",
+        )
 
-    update_login_session(token, {
-        "generated_otp": otp,
-        "otp_sent_at": time.time(),
-    })
+    update_login_session(
+        token,
+        {
+            "generated_otp": otp,
+            "otp_sent_at": time.time(),
+        },
+    )
 
-    return {"login_session_token": token, "message": "OTP sent to your email."}
+    return {
+        "login_session_token": token,
+        "message": "OTP sent to your email.",
+    }
 
 
 @app.post("/auth/login/resend-otp")
 def resend_otp(req: ResendOtpRequest):
-    session = get_login_session(req.login_session_token)
+
+    session = get_login_session(
+        req.login_session_token
+    )
+
     if not session:
-        raise HTTPException(400, "Login session expired. Please start over.")
+        raise HTTPException(
+            400,
+            "Login session expired. Please start over.",
+        )
 
     last_sent = session.get("otp_sent_at") or 0
+
     if time.time() - last_sent < 5:
-        return {"message": "OTP already sent recently."}
+        return {
+            "message": "OTP already sent recently."
+        }
 
     otp = generate_otp()
-    update_login_session(req.login_session_token, {
-        "generated_otp": otp,
-        "otp_sent_at": time.time(),
-    })
-    try:
-        send_otp_email(session["email"], otp)
-    except Exception as e:
-        raise HTTPException(502, f"Could not resend OTP: {e}")
 
-    return {"message": "A new OTP has been sent."}
+    update_login_session(
+        req.login_session_token,
+        {
+            "generated_otp": otp,
+            "otp_sent_at": time.time(),
+        },
+    )
+
+    try:
+        send_otp_email(
+            session["email"],
+            otp,
+        )
+    except Exception as e:
+        raise HTTPException(
+            502,
+            f"Could not resend OTP: {e}",
+        )
+
+    return {
+        "message": "A new OTP has been sent."
+    }
 
 
 @app.post("/auth/login/verify-otp")
 def verify_otp(req: VerifyOtpRequest):
-    session = get_login_session(req.login_session_token)
-    if not session:
-        raise HTTPException(400, "Login session expired. Please start over.")
 
-    if otp_expired(session.get("otp_sent_at")):
-        raise HTTPException(400, "OTP expired. Please resend a new one.")
+    session = get_login_session(
+        req.login_session_token
+    )
+
+    if not session:
+        raise HTTPException(
+            400,
+            "Login session expired. Please start over.",
+        )
+
+    if otp_expired(
+        session.get("otp_sent_at")
+    ):
+        raise HTTPException(
+            400,
+            "OTP expired. Please resend a new one.",
+        )
 
     if req.otp != session.get("generated_otp"):
-        raise HTTPException(400, "Incorrect OTP.")
+        raise HTTPException(
+            400,
+            "Incorrect OTP.",
+        )
 
-    update_login_session(req.login_session_token, {"otp_verified": True})
-    return {"message": "OTP verified. Proceed to PIN."}
+    update_login_session(
+        req.login_session_token,
+        {
+            "otp_verified": True
+        },
+    )
+
+    return {
+        "message": "OTP verified. Proceed to PIN."
+    }
 
 
 @app.post("/auth/login/verify-pin")
 def verify_pin_route(req: VerifyPinRequest):
-    session = get_login_session(req.login_session_token)
+
+    session = get_login_session(
+        req.login_session_token
+    )
+
     if not session:
-        raise HTTPException(400, "Login session expired. Please start over.")
+        raise HTTPException(
+            400,
+            "Login session expired. Please start over.",
+        )
+
     if not session.get("otp_verified"):
-        raise HTTPException(400, "OTP not verified yet.")
+        raise HTTPException(
+            400,
+            "OTP not verified yet.",
+        )
 
     email = session["email"]
+
     lockout_key = f"login_pin_{email}"
 
-    locked, remaining = is_locked_out(lockout_key)
+    locked, remaining = is_locked_out(
+        lockout_key
+    )
+
     if locked:
-        raise HTTPException(429, f"Too many incorrect PIN attempts. Try again in {remaining}s.")
+        raise HTTPException(
+            429,
+            (
+                "Too many incorrect PIN attempts. "
+                f"Try again in {remaining}s."
+            ),
+        )
 
     if verify_pin(email, req.pin):
+
         reset_attempts(lockout_key)
-        delete_login_session(req.login_session_token)
-        access_token = create_access_token(email)
-        return {"access_token": access_token}
-    else:
-        register_failed_attempt(lockout_key)
-        raise HTTPException(401, "Incorrect PIN.")
+
+        delete_login_session(
+            req.login_session_token
+        )
+
+        access_token = create_access_token(
+            email
+        )
+
+        return {
+            "access_token": access_token
+        }
+
+    register_failed_attempt(lockout_key)
+
+    raise HTTPException(
+        401,
+        "Incorrect PIN.",
+    )
 
 
 @app.post("/auth/forgot-pin")
-def forgot_pin(login_session_token: str, new_pin: str):
-    """Only usable mid-login, after password + OTP already verified."""
-    session = get_login_session(login_session_token)
+def forgot_pin(
+    login_session_token: str,
+    new_pin: str,
+):
+    """
+    Only usable mid-login, after password + OTP
+    have already been verified.
+    """
+
+    session = get_login_session(
+        login_session_token
+    )
+
     if not session or not session.get("otp_verified"):
-        raise HTTPException(400, "Password and OTP must be verified first.")
+        raise HTTPException(
+            400,
+            "Password and OTP must be verified first.",
+        )
+
     if len(new_pin) < 4:
-        raise HTTPException(400, "PIN must be 4 digits.")
+        raise HTTPException(
+            400,
+            "PIN must be 4 digits.",
+        )
 
     email = session["email"]
-    update_pin(email, new_pin)
-    reset_attempts(f"login_pin_{email}")
-    delete_login_session(login_session_token)
 
-    access_token = create_access_token(email)
-    return {"access_token": access_token, "message": "PIN updated."}
+    update_pin(
+        email,
+        new_pin,
+    )
+
+    reset_attempts(
+        f"login_pin_{email}"
+    )
+
+    delete_login_session(
+        login_session_token
+    )
+
+    access_token = create_access_token(
+        email
+    )
+
+    return {
+        "access_token": access_token,
+        "message": "PIN updated.",
+    }
 
 
 @app.post("/auth/recover-password")
-def recover_password(req: RecoverPasswordRequest):
-    data = get_recovery_data(req.email)
+def recover_password(
+    req: RecoverPasswordRequest,
+):
+
+    data = get_recovery_data(
+        req.email
+    )
+
     if not data:
-        raise HTTPException(404, "No recovery key was set up for this account.")
+        raise HTTPException(
+            404,
+            "No recovery key was set up for this account.",
+        )
 
     try:
         password = decrypt_password_with_recovery_key(
-            data["recovery_password_enc"], data["recovery_salt"], req.recovery_key
+            data["recovery_password_enc"],
+            data["recovery_salt"],
+            req.recovery_key,
         )
     except Exception:
-        raise HTTPException(401, "Incorrect recovery key.")
+        raise HTTPException(
+            401,
+            "Incorrect recovery key.",
+        )
 
-    return {"password": password}
+    return {
+        "password": password
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════
-# DOCUMENT ROUTES (require Authorization: Bearer <access_token>)
+# DOCUMENT ROUTES
 # ══════════════════════════════════════════════════════════════════════
 
 @app.post("/documents/upload")
@@ -272,28 +492,69 @@ def upload_document(
     folder: str = Form(None),
     email: str = Depends(get_current_user_email),
 ):
+
     lockout_key = f"upload_pin_{email}"
-    locked, remaining = is_locked_out(lockout_key)
+
+    locked, remaining = is_locked_out(
+        lockout_key
+    )
+
     if locked:
-        raise HTTPException(429, f"Too many incorrect PIN attempts. Try again in {remaining}s.")
+        raise HTTPException(
+            429,
+            (
+                "Too many incorrect PIN attempts. "
+                f"Try again in {remaining}s."
+            ),
+        )
 
     if not verify_pin(email, pin):
-        register_failed_attempt(lockout_key)
-        raise HTTPException(401, "Incorrect PIN.")
+        register_failed_attempt(
+            lockout_key
+        )
+
+        raise HTTPException(
+            401,
+            "Incorrect PIN.",
+        )
+
     reset_attempts(lockout_key)
 
     if not verify_password(email, password):
-        raise HTTPException(401, "Incorrect password.")
+        raise HTTPException(
+            401,
+            "Incorrect password.",
+        )
 
     file_data = file.file.read()
 
-    encrypted_data = encrypt_file(file_data, password)
-    encrypted_name = encrypt_file(file.filename.encode(), password)
-    display_name_enc = encrypt_filename(file.filename)
-    file_hash = generate_hash(encrypted_data)
+    encrypted_data = encrypt_file(
+        file_data,
+        password,
+    )
 
-    encrypted_filename = f"{email}_{uuid.uuid4().hex}.enc"
-    upload_to_s3(encrypted_data, encrypted_filename)
+    encrypted_name = encrypt_file(
+        file.filename.encode(),
+        password,
+    )
+
+    display_name_enc = encrypt_filename(
+        file.filename
+    )
+
+    file_hash = generate_hash(
+        encrypted_data
+    )
+
+    encrypted_filename = (
+        f"{email}_{uuid.uuid4().hex}.enc"
+    )
+
+    upload_to_s3(
+        encrypted_data,
+        encrypted_filename,
+    )
+
     salt = encrypted_data[:16]
 
     save_document_metadata(
@@ -308,145 +569,473 @@ def upload_document(
         folder=(folder if folder else None),
     )
 
-    return {"message": "Document uploaded successfully.", "s3_key": encrypted_filename}
+    return {
+        "message": "Document uploaded successfully.",
+        "s3_key": encrypted_filename,
+    }
 
 
 @app.get("/documents")
-def list_documents(email: str = Depends(get_current_user_email)):
+def list_documents(
+    email: str = Depends(get_current_user_email),
+):
+
     documents = get_all_documents(email)
+
     result = []
+
     for doc in documents:
+
         try:
-            shown_name = decrypt_filename(doc["display_name_enc"])
+            shown_name = decrypt_filename(
+                doc["display_name_enc"]
+            )
         except Exception:
             shown_name = "Encrypted document"
-        result.append({
-            "id": doc["s3_key"],
-            "display_name": shown_name,
-            "size_kb": round(doc["size"] / 1024, 1),
-            "date": doc["uploaded_at"].isoformat(),
-            "status": doc["status"],
-            "folder": doc.get("folder"),
-        })
+
+        result.append(
+            {
+                "id": doc["s3_key"],
+                "display_name": shown_name,
+                "size_kb": round(
+                    doc["size"] / 1024,
+                    1,
+                ),
+                "date": doc["uploaded_at"].isoformat(),
+                "status": doc["status"],
+                "folder": doc.get("folder"),
+            }
+        )
+
     return result
 
 
-class CreateFolderRequest(BaseModel):
-    name: str
-
+# ══════════════════════════════════════════════════════════════════════
+# FOLDER ROUTES
+# ══════════════════════════════════════════════════════════════════════
 
 @app.post("/folders")
-def create_folder_route(req: CreateFolderRequest, email: str = Depends(get_current_user_email)):
+def create_folder_route(
+    req: CreateFolderRequest,
+    email: str = Depends(get_current_user_email),
+):
+
     name = req.name.strip()
+
     if not name:
-        raise HTTPException(400, "Folder name can't be empty.")
-    created = create_folder(email, name)
+        raise HTTPException(
+            400,
+            "Folder name can't be empty.",
+        )
+
+    created = create_folder(
+        email,
+        name,
+    )
+
     if not created:
-        raise HTTPException(409, "A folder with that name already exists.")
-    return {"message": "Folder created.", "name": name}
+        raise HTTPException(
+            409,
+            "A folder with that name already exists.",
+        )
+
+    return {
+        "message": "Folder created.",
+        "name": name,
+    }
 
 
 @app.get("/folders")
-def list_folders_route(email: str = Depends(get_current_user_email)):
+def list_folders_route(
+    email: str = Depends(get_current_user_email),
+):
+
     return get_folders(email)
 
 
 @app.delete("/folders/{name}")
-def delete_folder_route(name: str, email: str = Depends(get_current_user_email)):
-    delete_folder(email, name)
-    return {"message": "Folder deleted. Its documents were moved back to the root."}
+def delete_folder_route(
+    name: str,
+    email: str = Depends(get_current_user_email),
+):
 
+    documents = get_all_documents(email)
+
+    folder_documents = [
+        doc
+        for doc in documents
+        if doc.get("folder") == name
+    ]
+
+    for doc in folder_documents:
+
+        try:
+            delete_from_s3(
+                doc["s3_key"]
+            )
+        except Exception:
+            pass
+
+        delete_document(
+            doc["s3_key"]
+        )
+
+    delete_folder(
+        email,
+        name,
+    )
+
+    return {
+        "message": (
+            "Folder and all documents inside it were deleted."
+        )
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════
+# DOCUMENT SECURITY ROUTES
+# ══════════════════════════════════════════════════════════════════════
 
 @app.post("/documents/{doc_id}/verify-pin")
-def verify_document_pin(doc_id: str, req: DocPinRequest, email: str = Depends(get_current_user_email)):
-    lockout_key = f"doc_pin_{email}_{doc_id}"
-    locked, remaining = is_locked_out(lockout_key)
+def verify_document_pin(
+    doc_id: str,
+    req: DocPinRequest,
+    email: str = Depends(get_current_user_email),
+):
+
+    lockout_key = (
+        f"doc_pin_{email}_{doc_id}"
+    )
+
+    locked, remaining = is_locked_out(
+        lockout_key
+    )
+
     if locked:
-        raise HTTPException(429, f"Too many attempts. Try again in {remaining}s.")
+        raise HTTPException(
+            429,
+            f"Too many attempts. Try again in {remaining}s.",
+        )
 
     if verify_pin(email, req.pin):
+
         reset_attempts(lockout_key)
-        return {"message": "PIN verified."}
-    else:
-        register_failed_attempt(lockout_key)
-        raise HTTPException(401, "Incorrect PIN.")
+
+        return {
+            "message": "PIN verified."
+        }
+
+    register_failed_attempt(
+        lockout_key
+    )
+
+    raise HTTPException(
+        401,
+        "Incorrect PIN.",
+    )
 
 
 @app.post("/documents/{doc_id}/decrypt")
-def decrypt_document(doc_id: str, req: DocDecryptRequest, email: str = Depends(get_current_user_email)):
-    documents = get_all_documents(email)
-    doc = next((d for d in documents if d["s3_key"] == doc_id), None)
-    if not doc:
-        raise HTTPException(404, "Document not found.")
+def decrypt_document(
+    doc_id: str,
+    req: DocDecryptRequest,
+    email: str = Depends(get_current_user_email),
+):
 
-    if not verify_password(email, req.password):
-        raise HTTPException(401, "Incorrect password. Cannot decrypt file.")
+    documents = get_all_documents(email)
+
+    doc = next(
+        (
+            d
+            for d in documents
+            if d["s3_key"] == doc_id
+        ),
+        None,
+    )
+
+    if not doc:
+        raise HTTPException(
+            404,
+            "Document not found.",
+        )
+
+    if not verify_password(
+        email,
+        req.password,
+    ):
+        raise HTTPException(
+            401,
+            "Incorrect password. Cannot decrypt file.",
+        )
 
     try:
-        real_name = decrypt_file(doc["encrypted_name"], req.password).decode()
+        real_name = decrypt_file(
+            doc["encrypted_name"],
+            req.password,
+        ).decode()
     except Exception:
-        raise HTTPException(401, "Could not decrypt this document's filename with that password.")
+        raise HTTPException(
+            401,
+            (
+                "Could not decrypt this document's "
+                "filename with that password."
+            ),
+        )
 
-    encrypted_data = download_from_s3(doc_id)
+    encrypted_data = download_from_s3(
+        doc_id
+    )
 
-    if not verify_sha256(encrypted_data, doc["hash"]):
-        raise HTTPException(409, "Tampered — this file's integrity check failed.")
+    if not verify_sha256(
+        encrypted_data,
+        doc["hash"],
+    ):
+        raise HTTPException(
+            409,
+            "Tampered — this file's integrity check failed.",
+        )
 
-    decrypted_data = decrypt_file(encrypted_data, req.password)
+    decrypted_data = decrypt_file(
+        encrypted_data,
+        req.password,
+    )
 
     return {
         "filename": real_name,
-        "file_base64": base64.b64encode(decrypted_data).decode(),
+        "file_base64": base64.b64encode(
+            decrypted_data
+        ).decode(),
         "integrity": "verified",
     }
 
 
 @app.delete("/documents/{doc_id}")
-def delete_doc(doc_id: str, email: str = Depends(get_current_user_email)):
+def delete_doc(
+    doc_id: str,
+    email: str = Depends(get_current_user_email),
+):
+
     documents = get_all_documents(email)
-    doc = next((d for d in documents if d["s3_key"] == doc_id), None)
+
+    doc = next(
+        (
+            d
+            for d in documents
+            if d["s3_key"] == doc_id
+        ),
+        None,
+    )
+
     if not doc:
-        raise HTTPException(404, "Document not found.")
+        raise HTTPException(
+            404,
+            "Document not found.",
+        )
 
     delete_from_s3(doc_id)
     delete_document(doc_id)
-    return {"message": "Document deleted successfully."}
+
+    return {
+        "message": "Document deleted successfully."
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════
-# SECURITY & PROFILE ROUTES
+# SECURITY ROUTES
 # ══════════════════════════════════════════════════════════════════════
 
 @app.post("/security/update-pin")
-def security_update_pin(req: UpdatePinRequest, email: str = Depends(get_current_user_email)):
-    if not verify_pin(email, req.current_pin):
-        raise HTTPException(401, "Your current PIN is incorrect.")
+def security_update_pin(
+    req: UpdatePinRequest,
+    email: str = Depends(get_current_user_email),
+):
+
+    if not verify_pin(
+        email,
+        req.current_pin,
+    ):
+        raise HTTPException(
+            401,
+            "Your current PIN is incorrect.",
+        )
+
     if len(req.new_pin) < 4:
-        raise HTTPException(400, "PIN must be 4 digits.")
+        raise HTTPException(
+            400,
+            "PIN must be 4 digits.",
+        )
 
-    update_pin(email, req.new_pin)
-    return {"message": "PIN updated successfully."}
+    update_pin(
+        email,
+        req.new_pin,
+    )
+
+    return {
+        "message": "PIN updated successfully."
+    }
 
 
-@app.delete("/account")
-def delete_account_route(email: str = Depends(get_current_user_email)):
-    for doc in get_all_documents(email):
-        try:
-            delete_from_s3(doc["s3_key"])
-        except Exception:
-            pass
-        delete_document(doc["s3_key"])
-    delete_user(email)
-    return {"message": "Account and all data deleted."}
-
+# ══════════════════════════════════════════════════════════════════════
+# PROFILE ROUTES
+# ══════════════════════════════════════════════════════════════════════
 
 @app.get("/profile")
-def get_profile(email: str = Depends(get_current_user_email)):
-    user = users_collection.find_one({"email": email})
+def get_profile(
+    email: str = Depends(get_current_user_email),
+):
+
+    user = users_collection.find_one(
+        {"email": email}
+    )
+
     if not user:
-        raise HTTPException(404, "User not found.")
+        raise HTTPException(
+            404,
+            "User not found.",
+        )
+
     return {
-        "name": user["name"],
-        "email": user["email"],
+        "name": user.get("name", ""),
+        "email": user.get("email", ""),
         "phone": user.get("phone", ""),
+    }
+
+
+@app.put("/profile")
+def update_profile(
+    req: UpdateProfileRequest,
+    current_email: str = Depends(get_current_user_email),
+):
+
+    new_name = req.name.strip()
+    new_email = req.email.strip().lower()
+    new_phone = (
+        req.phone
+        .strip()
+        .replace(" ", "")
+        .replace("-", "")
+    )
+
+    # ── Basic validation ─────────────────────────────────────────────
+
+    if not new_name:
+        raise HTTPException(
+            400,
+            "Name cannot be empty.",
+        )
+
+    if not new_email or "@" not in new_email:
+        raise HTTPException(
+            400,
+            "Enter a valid email address.",
+        )
+
+    if new_phone and not new_phone.startswith("+"):
+        new_phone = "+91" + new_phone.lstrip("0")
+
+    # ── Check current user ──────────────────────────────────────────
+
+    current_user = users_collection.find_one(
+        {"email": current_email}
+    )
+
+    if not current_user:
+        raise HTTPException(
+            404,
+            "User not found.",
+        )
+
+    # ── If email is changing, make sure new email isn't used ───────
+
+    email_changed = (
+        new_email.lower()
+        != current_email.lower()
+    )
+
+    if email_changed:
+
+        existing_user = users_collection.find_one(
+            {
+                "email": new_email,
+                "email": {
+                    "$ne": current_email
+                },
+            }
+        )
+
+        if existing_user:
+            raise HTTPException(
+                409,
+                "An account with this email already exists.",
+            )
+
+    # ── Update profile ──────────────────────────────────────────────
+
+    update_data = {
+        "name": new_name,
+        "email": new_email,
+        "phone": new_phone,
+    }
+
+    result = users_collection.update_one(
+        {"email": current_email},
+        {"$set": update_data},
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(
+            404,
+            "User not found.",
+        )
+
+    # ── Email change requires a fresh login ─────────────────────────
+
+    if email_changed:
+
+        return {
+            "message": (
+                "Profile updated. "
+                "Your email was changed, so please log in again."
+            ),
+            "email_changed": True,
+            "name": new_name,
+            "email": new_email,
+            "phone": new_phone,
+        }
+
+    return {
+        "message": "Profile updated successfully.",
+        "email_changed": False,
+        "name": new_name,
+        "email": new_email,
+        "phone": new_phone,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ACCOUNT DELETION
+# ══════════════════════════════════════════════════════════════════════
+
+@app.delete("/account")
+def delete_account_route(
+    email: str = Depends(get_current_user_email),
+):
+
+    for doc in get_all_documents(email):
+
+        try:
+            delete_from_s3(
+                doc["s3_key"]
+            )
+        except Exception:
+            pass
+
+        delete_document(
+            doc["s3_key"]
+        )
+
+    delete_user(email)
+
+    return {
+        "message": "Account and all data deleted."
     }

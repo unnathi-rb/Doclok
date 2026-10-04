@@ -104,12 +104,9 @@ def get_folders(user_id):
 
 
 def delete_folder(user_id, name):
-    # Documents inside are NOT deleted — they're just unfiled back to root.
-    documents_collection.update_many(
-        {"user_id": user_id, "folder": name},
-        {"$set": {"folder": None}},
+    folders_collection.delete_one(
+        {"user_id": user_id, "name": name}
     )
-    folders_collection.delete_one({"user_id": user_id, "name": name})
 
 
 def get_storage_used(user_id):
