@@ -208,9 +208,23 @@ def signup(req: SignupRequest):
 @app.post("/auth/login/password")
 def login_password(req: LoginPasswordRequest):
 
+    start = time.time()
+
+    print("\n========== LOGIN DEBUG ==========")
+    print(f"1. login_user: {time.time() - start:.2f}s")
+    print(f"2. create_login_session: {time.time() - start:.2f}s")
+    print(f"3. generate_otp: {time.time() - start:.2f}s")
+    print(f"4. send_otp_email: {time.time() - start:.2f}s")
+    print(f"5. update_login_session: {time.time() - start:.2f}s")
+    # 1. Check email + password
     user = login_user(
         req.email,
         req.password,
+    )
+
+    print(
+        f"1. login_user: "
+        f"{time.time() - start:.2f}s"
     )
 
     if not user:
@@ -219,13 +233,26 @@ def login_password(req: LoginPasswordRequest):
             "Invalid email or password.",
         )
 
+    # 2. Create temporary login session
     token = create_login_session(
         req.email,
         user,
     )
 
+    print(
+        f"2. create_login_session: "
+        f"{time.time() - start:.2f}s"
+    )
+
+    # 3. Generate OTP
     otp = generate_otp()
 
+    print(
+        f"3. generate_otp: "
+        f"{time.time() - start:.2f}s"
+    )
+
+    # 4. Send OTP
     try:
         send_otp_email(
             req.email,
@@ -237,6 +264,12 @@ def login_password(req: LoginPasswordRequest):
             f"Could not send OTP: {e}",
         )
 
+    print(
+        f"4. send_otp_email: "
+        f"{time.time() - start:.2f}s"
+    )
+
+    # 5. Save OTP in session
     update_login_session(
         token,
         {
@@ -245,12 +278,18 @@ def login_password(req: LoginPasswordRequest):
         },
     )
 
+    print(
+        f"5. update_login_session: "
+        f"{time.time() - start:.2f}s"
+    )
+
+    print("========== LOGIN COMPLETE ==========\n")
+
     return {
         "login_session_token": token,
         "message": "OTP sent to your email.",
     }
-
-
+    
 @app.post("/auth/login/resend-otp")
 def resend_otp(req: ResendOtpRequest):
 
