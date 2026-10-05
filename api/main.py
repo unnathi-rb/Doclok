@@ -139,7 +139,6 @@ class CreateFolderRequest(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     name: str
-    email: str
     phone: str
 
 
@@ -906,9 +905,8 @@ def update_profile(
     req: UpdateProfileRequest,
     current_email: str = Depends(get_current_user_email),
 ):
-
     new_name = req.name.strip()
-    new_email = req.email.strip().lower()
+
     new_phone = (
         req.phone
         .strip()
@@ -916,7 +914,7 @@ def update_profile(
         .replace("-", "")
     )
 
-    # ── Basic validation ─────────────────────────────────────────────
+    # ── Validation ───────────────────────────────────────────────
 
     if not new_name:
         raise HTTPException(
@@ -924,16 +922,11 @@ def update_profile(
             "Name cannot be empty.",
         )
 
-    if not new_email or "@" not in new_email:
-        raise HTTPException(
-            400,
-            "Enter a valid email address.",
-        )
-
+    # Convert Indian number to +91 format
     if new_phone and not new_phone.startswith("+"):
         new_phone = "+91" + new_phone.lstrip("0")
 
-    # ── Check current user ──────────────────────────────────────────
+    # ── Check current user ──────────────────────────────────────
 
     current_user = users_collection.find_one(
         {"email": current_email}
@@ -945,41 +938,16 @@ def update_profile(
             "User not found.",
         )
 
-    # ── If email is changing, make sure new email isn't used ───────
-
-    email_changed = (
-        new_email.lower()
-        != current_email.lower()
-    )
-
-    if email_changed:
-
-        existing_user = users_collection.find_one(
-            {
-                "email": new_email,
-                "email": {
-                    "$ne": current_email
-                },
-            }
-        )
-
-        if existing_user:
-            raise HTTPException(
-                409,
-                "An account with this email already exists.",
-            )
-
-    # ── Update profile ──────────────────────────────────────────────
-
-    update_data = {
-        "name": new_name,
-        "email": new_email,
-        "phone": new_phone,
-    }
+    # ── Update only name and phone ──────────────────────────────
 
     result = users_collection.update_one(
         {"email": current_email},
-        {"$set": update_data},
+        {
+            "$set": {
+                "name": new_name,
+                "phone": new_phone,
+            }
+        },
     )
 
     if result.matched_count == 0:
@@ -988,29 +956,12 @@ def update_profile(
             "User not found.",
         )
 
-    # ── Email change requires a fresh login ─────────────────────────
-
-    if email_changed:
-
-        return {
-            "message": (
-                "Profile updated. "
-                "Your email was changed, so please log in again."
-            ),
-            "email_changed": True,
-            "name": new_name,
-            "email": new_email,
-            "phone": new_phone,
-        }
-
     return {
         "message": "Profile updated successfully.",
-        "email_changed": False,
         "name": new_name,
-        "email": new_email,
+        "email": current_email,
         "phone": new_phone,
     }
-
 
 # ══════════════════════════════════════════════════════════════════════
 # ACCOUNT DELETION
