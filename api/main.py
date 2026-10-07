@@ -57,6 +57,11 @@ from api.lockout import (
 )
 
 
+# Largest file a user may upload. Keeps the server from running out of
+# memory (the whole file is held in RAM while it is encrypted).
+MAX_UPLOAD_MB = 25
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+
 app = FastAPI(title="DocLok API")
 security_scheme = HTTPBearer()
 
@@ -515,7 +520,18 @@ def upload_document(
             "Incorrect password.",
         )
 
-    file_data = file.file.read()
+    # Read at most limit+1 bytes so an oversized file is rejected
+    # without loading all of it into memory.
+    file_data = file.file.read(MAX_UPLOAD_BYTES + 1)
+
+    if len(file_data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            413,
+            f"File is too large. Maximum size is {MAX_UPLOAD_MB} MB per file.",
+        )
+
+    if len(file_data) == 0:
+        raise HTTPException(400, "The selected file is empty.")
 
     encrypted_data = encrypt_file(
         file_data,
@@ -539,24 +555,31 @@ def upload_document(
         f"{email}_{uuid.uuid4().hex}.enc"
     )
 
-    upload_to_s3(
-        encrypted_data,
-        encrypted_filename,
-    )
+    try:
+        upload_to_s3(
+            encrypted_data,
+            encrypted_filename,
+        )
 
-    salt = encrypted_data[:16]
+        salt = encrypted_data[:16]
 
-    save_document_metadata(
-        user_id=email,
-        encrypted_name=encrypted_name,
-        display_name_enc=display_name_enc,
-        encrypted_filename=encrypted_filename,
-        s3_key=encrypted_filename,
-        file_hash=file_hash,
-        salt=salt,
-        size=len(file_data),
-        folder=(folder if folder else None),
-    )
+        save_document_metadata(
+            user_id=email,
+            encrypted_name=encrypted_name,
+            display_name_enc=display_name_enc,
+            encrypted_filename=encrypted_filename,
+            s3_key=encrypted_filename,
+            file_hash=file_hash,
+            salt=salt,
+            size=len(file_data),
+            folder=(folder if folder else None),
+        )
+    except Exception as e:
+        print(f"Upload storage error: {e}")
+        raise HTTPException(
+            502,
+            "Could not save the file right now. Please try again.",
+        )
 
     return {
         "message": "Document uploaded successfully.",
