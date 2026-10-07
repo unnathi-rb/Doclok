@@ -72,6 +72,27 @@ def health():
     return {"status": "ok"}
 
 
+def _norm(email: str) -> str:
+    """Lower-case + trim, so lockouts can't be dodged by changing case."""
+    return email.strip().lower()
+
+
+def _fail_and_check_lock(lockout_key: str, message_prefix: str):
+    """
+    Records a wrong attempt. If that attempt triggered the lockout
+    (5th wrong try), answer with 429 straight away so the app can start
+    its countdown immediately.
+    """
+    register_failed_attempt(lockout_key)
+
+    locked, remaining = is_locked_out(lockout_key)
+    if locked:
+        raise HTTPException(
+            429,
+            f"{message_prefix} Try again in {remaining}s.",
+        )
+
+
 # ══════════════════════════════════════════════════════════════════════
 # AUTH DEPENDENCY
 # ══════════════════════════════════════════════════════════════════════
@@ -219,8 +240,8 @@ def signup(req: SignupRequest):
 @app.post("/auth/login/password")
 def login_password(req: LoginPasswordRequest, background: BackgroundTasks):
 
-    # 1. Check email + password (with attempt limit)
-    lockout_key = f"login_pw_{req.email}"
+    # 1. Check email + password (5 wrong tries -> locked for 60s)
+    lockout_key = f"login_pw_{_norm(req.email)}"
 
     locked, remaining = is_locked_out(lockout_key)
     if locked:
@@ -232,7 +253,10 @@ def login_password(req: LoginPasswordRequest, background: BackgroundTasks):
     user = login_user(req.email, req.password)
 
     if not user:
-        register_failed_attempt(lockout_key)
+        _fail_and_check_lock(
+            lockout_key,
+            "Too many incorrect attempts.",
+        )
         raise HTTPException(401, "Invalid email or password.")
 
     reset_attempts(lockout_key)
@@ -395,7 +419,10 @@ def verify_pin_route(req: VerifyPinRequest):
             "access_token": access_token
         }
 
-    register_failed_attempt(lockout_key)
+    _fail_and_check_lock(
+        lockout_key,
+        "Too many incorrect PIN attempts.",
+    )
 
     raise HTTPException(
         401,
@@ -469,7 +496,7 @@ def recover_password(
             "No recovery key was set up for this account.",
         )
 
-    lockout_key = f"recover_{req.email}"
+    lockout_key = f"recover_{_norm(req.email)}"
 
     locked, remaining = is_locked_out(lockout_key)
     if locked:
