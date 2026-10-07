@@ -2,7 +2,7 @@ import base64
 import time
 import uuid
 
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import jwt as pyjwt
@@ -59,6 +59,12 @@ from api.lockout import (
 
 app = FastAPI(title="DocLok API")
 security_scheme = HTTPBearer()
+
+
+@app.get("/health")
+def health():
+    """Cheap endpoint for uptime pingers (keeps Render from sleeping)."""
+    return {"status": "ok"}
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -206,90 +212,35 @@ def signup(req: SignupRequest):
 
 
 @app.post("/auth/login/password")
-def login_password(req: LoginPasswordRequest):
+def login_password(req: LoginPasswordRequest, background: BackgroundTasks):
 
-    start = time.time()
-
-    print("\n========== LOGIN DEBUG ==========")
-    print(f"1. login_user: {time.time() - start:.2f}s")
-    print(f"2. create_login_session: {time.time() - start:.2f}s")
-    print(f"3. generate_otp: {time.time() - start:.2f}s")
-    print(f"4. send_otp_email: {time.time() - start:.2f}s")
-    print(f"5. update_login_session: {time.time() - start:.2f}s")
     # 1. Check email + password
-    user = login_user(
-        req.email,
-        req.password,
-    )
-
-    print(
-        f"1. login_user: "
-        f"{time.time() - start:.2f}s"
-    )
+    user = login_user(req.email, req.password)
 
     if not user:
-        raise HTTPException(
-            401,
-            "Invalid email or password.",
-        )
+        raise HTTPException(401, "Invalid email or password.")
 
-    # 2. Create temporary login session
-    token = create_login_session(
-        req.email,
-        user,
-    )
-
-    print(
-        f"2. create_login_session: "
-        f"{time.time() - start:.2f}s"
-    )
-
-    # 3. Generate OTP
+    # 2. Generate OTP and create the login session in ONE db write
     otp = generate_otp()
+    token = create_login_session(req.email, user, otp)
 
-    print(
-        f"3. generate_otp: "
-        f"{time.time() - start:.2f}s"
-    )
-
-    # 4. Send OTP
-    try:
-        send_otp_email(
-            req.email,
-            otp,
-        )
-    except Exception as e:
-        raise HTTPException(
-            502,
-            f"Could not send OTP: {e}",
-        )
-
-    print(
-        f"4. send_otp_email: "
-        f"{time.time() - start:.2f}s"
-    )
-
-    # 5. Save OTP in session
-    update_login_session(
-        token,
-        {
-            "generated_otp": otp,
-            "otp_sent_at": time.time(),
-        },
-    )
-
-    print(
-        f"5. update_login_session: "
-        f"{time.time() - start:.2f}s"
-    )
-
-    print("========== LOGIN COMPLETE ==========\n")
+    # 3. Send the email in the background so the response returns
+    #    immediately (the user can tap "Resend" if it never arrives).
+    background.add_task(_send_otp_safe, req.email, otp)
 
     return {
         "login_session_token": token,
         "message": "OTP sent to your email.",
     }
-    
+
+
+def _send_otp_safe(email: str, otp: str):
+    try:
+        send_otp_email(email, otp)
+    except Exception as e:
+        print(f"OTP email failed for {email}: {e}")
+
+
 @app.post("/auth/login/resend-otp")
 def resend_otp(req: ResendOtpRequest):
 

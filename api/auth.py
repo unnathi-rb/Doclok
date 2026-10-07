@@ -24,19 +24,18 @@ JWT_EXP_SECONDS = 60 * 60 * 12  # 12 hours
 LOGIN_SESSION_TTL_SECONDS = 60 * 15  # 15 minutes to complete OTP + PIN steps
 
 
-def create_login_session(email: str, user: dict) -> str:
+def create_login_session(email: str, user: dict, otp: str) -> str:
+    """One insert: creates the session with the OTP already attached."""
     token = secrets.token_urlsafe(32)
-    login_sessions_collection.update_one(
-        {"_id": token},
-        {"$set": {
-            "email": email,
-            "otp_verified": False,
-            "generated_otp": None,
-            "otp_sent_at": None,
-            "created_at": time.time(),
-        }},
-        upsert=True
-    )
+    now = time.time()
+    login_sessions_collection.insert_one({
+        "_id": token,
+        "email": email,
+        "otp_verified": False,
+        "generated_otp": otp,
+        "otp_sent_at": now,
+        "created_at": now,
+    })
     return token
 
 

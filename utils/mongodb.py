@@ -18,6 +18,13 @@ documents_collection = db["documents"]
 folders_collection = db["folders"]
 
 users_collection = db["users"]
+
+# Index so login/PIN lookups by email do not scan the whole collection.
+try:
+    users_collection.create_index("email", unique=True)
+except Exception as _e:
+    print("Could not create users.email index:", _e)
+
 def save_document_metadata(
     user_id,
     encrypted_name,
