@@ -219,11 +219,23 @@ def signup(req: SignupRequest):
 @app.post("/auth/login/password")
 def login_password(req: LoginPasswordRequest, background: BackgroundTasks):
 
-    # 1. Check email + password
+    # 1. Check email + password (with attempt limit)
+    lockout_key = f"login_pw_{req.email}"
+
+    locked, remaining = is_locked_out(lockout_key)
+    if locked:
+        raise HTTPException(
+            429,
+            f"Too many incorrect attempts. Try again in {remaining}s.",
+        )
+
     user = login_user(req.email, req.password)
 
     if not user:
+        register_failed_attempt(lockout_key)
         raise HTTPException(401, "Invalid email or password.")
+
+    reset_attempts(lockout_key)
 
     # 2. Generate OTP and create the login session in ONE db write
     otp = generate_otp()
@@ -457,6 +469,15 @@ def recover_password(
             "No recovery key was set up for this account.",
         )
 
+    lockout_key = f"recover_{req.email}"
+
+    locked, remaining = is_locked_out(lockout_key)
+    if locked:
+        raise HTTPException(
+            429,
+            f"Too many incorrect attempts. Try again in {remaining}s.",
+        )
+
     try:
         password = decrypt_password_with_recovery_key(
             data["recovery_password_enc"],
@@ -464,10 +485,13 @@ def recover_password(
             req.recovery_key,
         )
     except Exception:
+        register_failed_attempt(lockout_key)
         raise HTTPException(
             401,
             "Incorrect recovery key.",
         )
+
+    reset_attempts(lockout_key)
 
     return {
         "password": password
@@ -514,11 +538,23 @@ def upload_document(
 
     reset_attempts(lockout_key)
 
+    pw_key = f"doc_pw_{email}"
+
+    locked, remaining = is_locked_out(pw_key)
+    if locked:
+        raise HTTPException(
+            429,
+            f"Too many incorrect password attempts. Try again in {remaining}s.",
+        )
+
     if not verify_password(email, password):
+        register_failed_attempt(pw_key)
         raise HTTPException(
             401,
             "Incorrect password.",
         )
+
+    reset_attempts(pw_key)
 
     # Read at most limit+1 bytes so an oversized file is rejected
     # without loading all of it into memory.
@@ -771,14 +807,26 @@ def decrypt_document(
             "Document not found.",
         )
 
+    pw_key = f"doc_pw_{email}"
+
+    locked, remaining = is_locked_out(pw_key)
+    if locked:
+        raise HTTPException(
+            429,
+            f"Too many incorrect password attempts. Try again in {remaining}s.",
+        )
+
     if not verify_password(
         email,
         req.password,
     ):
+        register_failed_attempt(pw_key)
         raise HTTPException(
             401,
             "Incorrect password. Cannot decrypt file.",
         )
+
+    reset_attempts(pw_key)
 
     try:
         real_name = decrypt_file(
